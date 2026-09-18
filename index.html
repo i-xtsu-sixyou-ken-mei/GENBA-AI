@@ -32,6 +32,8 @@
       margin:0;
       color:var(--ink);
       background:var(--bg);
+      overflow-x:hidden;
+      -webkit-text-size-adjust:100%;
       font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text","Hiragino Sans","Yu Gothic UI","Yu Gothic",Meiryo,sans-serif;
       -webkit-font-smoothing:antialiased;
     }
@@ -181,16 +183,105 @@
       .hero{min-height:680px}
     }
     @media(max-width:560px){
-      .wrap{width:min(100% - 24px,1180px)}
-      .hero{padding-top:82px}
-      .hero h1{font-size:56px}
-      .device-stage{height:220px}
-      section{padding:78px 0}
-      .flow,.update-box,.subscription{padding:24px}
-      .usecases{grid-template-columns:1fr}
-      .email-form{border-radius:20px;display:grid;padding:8px;gap:8px}
-      .email-form input{height:48px}
-      .email-form .btn{width:100%}
+      .wrap{width:min(100% - 28px,1180px)}
+      .nav-inner{height:56px;gap:12px}
+      .brand{font-size:19px}
+      .nav-cta{min-height:34px;padding:0 14px;font-size:12px;white-space:nowrap}
+
+      .hero{
+        min-height:auto;
+        padding:72px 0 46px;
+      }
+      .hero h1{font-size:50px;line-height:1;letter-spacing:-.06em;margin:14px 0 16px}
+      .hero .lead{font-size:21px}
+      .hero .sub{font-size:15px;line-height:1.7}
+      .hero-actions{margin-top:22px;gap:10px}
+      .hero-actions .btn{min-height:42px;padding:0 16px;font-size:14px}
+      .device-stage{height:168px;margin-top:30px}
+      .device{width:min(280px,78vw);height:92px;border-radius:18px}
+      .device:before{top:-45px;height:62px;border-radius:18px}
+      .device .led{right:24px;top:25px}
+      .device .port{left:22px;top:23px;width:20px;height:5px}
+      .device .port.two{left:52px;width:6px}
+
+      section{padding:58px 0}
+      .section-title{margin-bottom:34px}
+      .section-title h2{font-size:38px;line-height:1.08;margin:8px 0 14px}
+      .section-title p{font-size:15px;line-height:1.7}
+      .eyebrow{font-size:12px}
+
+      .flow{
+        grid-template-columns:1fr;
+        gap:10px;
+        padding:0;
+        background:transparent;
+        box-shadow:none;
+      }
+      .flow-card{
+        min-height:auto;
+        padding:22px 20px;
+        border-radius:18px;
+        background:#fff;
+        box-shadow:0 8px 24px rgba(0,0,0,.04);
+      }
+      .flow-card strong{font-size:19px}
+      .flow-card span{font-size:13px;line-height:1.6}
+      .flow-arrow{font-size:22px;line-height:1;margin:2px 0;transform:none;text-align:center}
+      .flow-card.cloud:after{font-size:48px;right:18px;top:18px}
+      .flow-card.cloud{padding-right:74px}
+
+      .feature-grid{gap:12px}
+      .feature{min-height:auto;padding:24px;border-radius:20px}
+      .icon{font-size:28px;margin-bottom:24px}
+      .feature h3{font-size:21px}
+      .feature p{font-size:14px;line-height:1.65}
+
+      .usecases{grid-template-columns:1fr;gap:10px}
+      .usecase{min-height:auto;padding:20px;border-radius:18px}
+      .usecase h4{margin:18px 0 6px;font-size:16px}
+      .usecase p{font-size:13px}
+
+      .update-box,.subscription{padding:24px;border-radius:22px}
+      .update-box{gap:20px}
+      .update-box h3{font-size:34px}
+      .update-box p{font-size:14px}
+      .step{padding:15px;border-radius:15px}
+      .step b{flex-basis:30px;height:30px}
+      .step span{font-size:13px}
+
+      .plans{gap:14px}
+      .plan{
+        min-height:0;
+        padding:24px;
+        border-radius:24px;
+      }
+      .plan.primary{outline-width:1.5px}
+      .plan h3{font-size:28px;margin-top:16px}
+      .plan .for{font-size:13px}
+      .mini-device{height:92px;margin:18px 0 20px}
+      .mini-studio{width:128px;height:50px}
+      .mini-rack{width:90px;height:86px}
+      .mini-infra span{width:42px;height:86px}
+      .plan ul{font-size:14px;line-height:1.7;margin-bottom:20px;padding-left:19px}
+      .plan .btn{width:100%;min-height:44px;font-size:14px}
+      .status{font-size:11px;padding:6px 9px}
+
+      .subscription{gap:24px}
+      .subscription h3{font-size:32px}
+      .subscription p{font-size:14px}
+      .checklist{gap:9px}
+      .checklist div{padding:12px 14px;font-size:13px}
+
+      .cta{padding:76px 0}
+      .cta h2{font-size:48px}
+      .cta p{font-size:15px}
+      .interest-row{margin-top:20px}
+      .email-form{border-radius:18px;display:grid;padding:8px;gap:8px}
+      .email-form input{height:46px}
+      .email-form .btn{width:100%;min-height:44px}
+
+      .footer-inner{display:grid;gap:8px}
+      .legal{margin-top:28px}
     }
   </style>
 </head>
