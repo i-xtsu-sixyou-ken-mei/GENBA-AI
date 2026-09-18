@@ -1,0 +1,403 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#f5f5f7" />
+  <meta name="description" content="GENBA AI — 医療機関のためのオンプレミスPrivate AI。患者データをクラウドへ送らず、現場でAIを活用。" />
+  <title>GENBA AI | AIを、現場へ。</title>
+  <style>
+    :root{
+      --bg:#f5f5f7;
+      --surface:#fff;
+      --ink:#161617;
+      --muted:#6e6e73;
+      --line:#d2d2d7;
+      --blue:#0071e3;
+      --blue-hover:#0077ed;
+      --dark:#0d0d0f;
+      --radius:28px;
+      --shadow:0 22px 70px rgba(0,0,0,.08);
+    }
+    *{box-sizing:border-box}
+    html{scroll-behavior:smooth}
+    body{
+      margin:0;
+      color:var(--ink);
+      background:var(--bg);
+      font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text","Hiragino Sans","Yu Gothic UI","Yu Gothic",Meiryo,sans-serif;
+      -webkit-font-smoothing:antialiased;
+    }
+    a{color:inherit;text-decoration:none}
+    button,input{font:inherit}
+    .wrap{width:min(1180px,calc(100% - 40px));margin:auto}
+    .nav{
+      position:sticky;top:0;z-index:30;
+      background:rgba(245,245,247,.82);
+      backdrop-filter:saturate(180%) blur(20px);
+      border-bottom:1px solid rgba(0,0,0,.06);
+    }
+    .nav-inner{height:64px;display:flex;align-items:center;justify-content:space-between;gap:28px}
+    .brand{font-weight:800;letter-spacing:-.04em;font-size:22px}
+    .nav-links{display:flex;align-items:center;gap:28px;font-size:13px;color:#3a3a3c}
+    .nav-cta,.btn{
+      display:inline-flex;align-items:center;justify-content:center;
+      min-height:44px;padding:0 20px;border-radius:999px;
+      background:var(--blue);color:#fff;font-weight:700;border:0;cursor:pointer;
+      transition:.2s ease;
+    }
+    .nav-cta{min-height:36px;padding:0 16px;font-size:13px}
+    .nav-cta:hover,.btn:hover{background:var(--blue-hover);transform:translateY(-1px)}
+    .btn.secondary{background:#fff;color:#1d1d1f;border:1px solid var(--line)}
+    .eyebrow{font-size:14px;font-weight:700;letter-spacing:.04em;color:var(--blue)}
+    .hero{
+      min-height:760px;
+      display:grid;place-items:center;text-align:center;
+      padding:110px 0 80px;
+      background:
+        radial-gradient(circle at 50% 34%,rgba(255,255,255,.95),rgba(245,245,247,.88) 50%,#f5f5f7 76%);
+    }
+    .hero h1{font-size:clamp(56px,8vw,112px);line-height:.95;letter-spacing:-.065em;margin:18px 0 22px}
+    .hero .lead{font-size:clamp(20px,2.5vw,32px);font-weight:700;letter-spacing:-.03em;margin:0 0 8px}
+    .hero .sub{max-width:760px;margin:0 auto;color:var(--muted);font-size:17px;line-height:1.8}
+    .hero-actions{display:flex;justify-content:center;gap:12px;flex-wrap:wrap;margin-top:30px}
+    .device-stage{height:260px;display:grid;place-items:center;margin-top:46px;perspective:900px}
+    .device{
+      position:relative;width:min(430px,80vw);height:140px;border-radius:24px;
+      background:linear-gradient(180deg,#fafafa,#d8d8da 58%,#c2c2c5);
+      box-shadow:0 28px 50px rgba(0,0,0,.18),inset 0 1px 0 rgba(255,255,255,.9);
+      transform:rotateX(8deg);
+    }
+    .device:before{
+      content:"";position:absolute;left:0;right:0;top:-70px;height:96px;border-radius:28px;
+      background:linear-gradient(180deg,#f9f9fa,#e4e4e6);
+      box-shadow:inset 0 1px 0 white,0 12px 20px rgba(0,0,0,.06);
+    }
+    .device .led{position:absolute;right:35px;top:37px;width:5px;height:5px;border-radius:50%;background:#2fbd66;box-shadow:0 0 5px #2fbd66}
+    .device .port{position:absolute;left:30px;top:34px;width:28px;height:6px;border-radius:8px;background:#353538}
+    .device .port.two{left:72px;width:7px}
+    section{padding:110px 0}
+    .section-title{text-align:center;max-width:820px;margin:0 auto 60px}
+    .section-title h2{font-size:clamp(38px,5vw,68px);line-height:1.05;letter-spacing:-.055em;margin:10px 0 20px}
+    .section-title p{font-size:18px;line-height:1.8;color:var(--muted);margin:0}
+    .flow{
+      display:grid;grid-template-columns:1fr auto 1fr auto 1fr;
+      align-items:center;gap:18px;background:#fff;border-radius:var(--radius);padding:42px;box-shadow:var(--shadow)
+    }
+    .flow-card{padding:24px;border-radius:20px;background:#f7f7f9;min-height:180px;display:flex;flex-direction:column;justify-content:center}
+    .flow-card strong{font-size:22px;letter-spacing:-.02em}
+    .flow-card span{color:var(--muted);font-size:14px;line-height:1.7;margin-top:8px}
+    .flow-arrow{font-size:24px;color:#8e8e93}
+    .flow-card.cloud{position:relative}
+    .flow-card.cloud:after{content:"×";font-size:70px;line-height:1;position:absolute;right:24px;top:38px;color:#ff3b30;font-weight:300}
+    .dark-section{background:var(--dark);color:#f5f5f7}
+    .dark-section .section-title p{color:#a1a1a6}
+    .feature-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+    .feature{
+      background:#1c1c1e;border:1px solid #2c2c2e;border-radius:26px;padding:32px;min-height:270px
+    }
+    .icon{font-size:34px;margin-bottom:44px}
+    .feature h3{font-size:24px;margin:0 0 12px;letter-spacing:-.03em}
+    .feature p{color:#a1a1a6;line-height:1.7;margin:0}
+    .update-box{
+      display:grid;grid-template-columns:1.1fr .9fr;gap:28px;align-items:center;
+      background:#fff;border-radius:var(--radius);padding:56px;box-shadow:var(--shadow)
+    }
+    .update-box h3{font-size:clamp(34px,4vw,58px);letter-spacing:-.05em;line-height:1.06;margin:12px 0 18px}
+    .update-box p{color:var(--muted);line-height:1.8;font-size:17px}
+    .update-steps{display:grid;gap:12px}
+    .step{display:flex;gap:15px;align-items:flex-start;padding:18px;border:1px solid #e5e5e7;border-radius:18px;background:#fafafa}
+    .step b{display:grid;place-items:center;flex:0 0 34px;height:34px;border-radius:50%;background:#111;color:#fff}
+    .step strong{display:block;margin:2px 0 4px}
+    .step span{font-size:14px;color:var(--muted)}
+    .plans{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+    .plan{
+      display:flex;flex-direction:column;background:#fff;border-radius:28px;padding:30px;min-height:520px;
+      border:1px solid rgba(0,0,0,.06);box-shadow:0 12px 38px rgba(0,0,0,.05)
+    }
+    .plan.primary{outline:2px solid var(--blue);outline-offset:-2px}
+    .status{align-self:flex-start;font-size:12px;font-weight:800;border-radius:999px;padding:7px 10px;background:#e8f3ff;color:#06c}
+    .status.soon{background:#f0f0f2;color:#6e6e73}
+    .plan h3{font-size:30px;letter-spacing:-.04em;margin:20px 0 4px}
+    .plan .for{color:var(--muted);font-size:14px}
+    .mini-device{height:120px;display:grid;place-items:center;margin:24px 0}
+    .mini-studio{width:150px;height:58px;border-radius:12px;background:linear-gradient(#fafafa,#c9c9cc);box-shadow:0 12px 22px rgba(0,0,0,.14)}
+    .mini-rack{width:112px;height:110px;background:#202124;border-radius:7px;box-shadow:0 12px 22px rgba(0,0,0,.14);padding:10px}
+    .mini-rack:after{content:"";display:block;height:100%;background:repeating-linear-gradient(#34363a 0 6px,#17181a 6px 11px)}
+    .mini-infra{display:flex;gap:8px}
+    .mini-infra span{width:54px;height:110px;border-radius:5px;background:repeating-linear-gradient(#2a2c30 0 7px,#111214 7px 12px);box-shadow:0 12px 22px rgba(0,0,0,.12)}
+    .plan ul{padding-left:20px;line-height:1.9;font-size:14px;margin:0 0 26px}
+    .plan .btn{margin-top:auto}
+    .usecases{display:grid;grid-template-columns:repeat(5,1fr);gap:12px}
+    .usecase{background:#fff;border-radius:20px;padding:24px 20px;min-height:165px}
+    .usecase .emoji{font-size:28px}
+    .usecase h4{font-size:17px;margin:28px 0 7px}
+    .usecase p{font-size:13px;color:var(--muted);line-height:1.6;margin:0}
+    .subscription{
+      margin-top:18px;background:linear-gradient(145deg,#0b0b0c,#242426);border-radius:30px;color:#fff;padding:54px;
+      display:grid;grid-template-columns:1.2fr .8fr;gap:50px;align-items:center
+    }
+    .subscription h3{font-size:42px;line-height:1.1;letter-spacing:-.045em;margin:8px 0 16px}
+    .subscription p{color:#b7b7bc;line-height:1.8}
+    .checklist{display:grid;gap:12px}
+    .checklist div{padding:14px 16px;border:1px solid #3a3a3c;border-radius:14px;color:#e5e5ea}
+    .cta{padding:120px 0;text-align:center;background:#fff}
+    .cta h2{font-size:clamp(44px,6vw,82px);letter-spacing:-.06em;line-height:1.02;margin:0 0 20px}
+    .cta p{color:var(--muted);font-size:18px;line-height:1.7}
+    .email-form{display:flex;max-width:560px;margin:32px auto 12px;background:#f5f5f7;border-radius:999px;padding:6px;border:1px solid #dedee2}
+    .email-form input{flex:1;border:0;background:transparent;padding:0 18px;outline:none;min-width:0}
+    .email-form button{border:0}
+    .form-note{font-size:12px!important}
+    .form-message{font-size:13px;color:#06c;min-height:20px;margin-top:10px}
+    footer{padding:26px 0;border-top:1px solid #e5e5e7;background:#fff;color:#6e6e73;font-size:12px}
+    .footer-inner{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap}
+    .legal{max-width:900px;margin:40px auto 0;font-size:12px;color:#8e8e93;line-height:1.8;text-align:left}
+    @media(max-width:900px){
+      .nav-links a:not(.nav-cta){display:none}
+      .flow{grid-template-columns:1fr}
+      .flow-arrow{transform:rotate(90deg);text-align:center}
+      .feature-grid,.plans{grid-template-columns:1fr}
+      .usecases{grid-template-columns:repeat(2,1fr)}
+      .update-box,.subscription{grid-template-columns:1fr}
+      .hero{min-height:680px}
+    }
+    @media(max-width:560px){
+      .wrap{width:min(100% - 24px,1180px)}
+      .hero{padding-top:82px}
+      .hero h1{font-size:56px}
+      .device-stage{height:220px}
+      section{padding:78px 0}
+      .flow,.update-box,.subscription{padding:24px}
+      .usecases{grid-template-columns:1fr}
+      .email-form{border-radius:20px;display:grid;padding:8px;gap:8px}
+      .email-form input{height:48px}
+      .email-form .btn{width:100%}
+    }
+  </style>
+</head>
+<body>
+  <header class="nav">
+    <div class="wrap nav-inner">
+      <a class="brand" href="#top">GENBA AI</a>
+      <nav class="nav-links" aria-label="メインナビゲーション">
+        <a href="#concept">特徴</a>
+        <a href="#usecases">活用例</a>
+        <a href="#plans">製品</a>
+        <a href="#updates">アップデート</a>
+        <a class="nav-cta" href="#contact">導入相談を予約する</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="top">
+    <section class="hero">
+      <div class="wrap">
+        <div class="eyebrow">GENBA AI for Healthcare</div>
+        <h1>AIを、現場へ。</h1>
+        <p class="lead">患者データは、そのまま院内に。</p>
+        <p class="sub">GENBA AIは、機密データをクラウドLLMへ送らずに使えるオンプレミスPrivate AIです。まずはMac Studioから、現場専用のAI環境を始められます。</p>
+        <div class="hero-actions">
+          <a class="btn" href="#contact">導入相談を予約する</a>
+          <a class="btn secondary" href="#plans">製品を見る</a>
+        </div>
+        <div class="device-stage" aria-label="GENBA Studio">
+          <div class="device"><i class="port"></i><i class="port two"></i><i class="led"></i></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="concept">
+      <div class="wrap">
+        <div class="section-title">
+          <div class="eyebrow">Private by Design</div>
+          <h2>クラウドではなく、<br>ここで動く。</h2>
+          <p>カルテ、院内文書、研究データ。外部サービスへ簡単に送れない情報だからこそ、AIをデータのある場所へ置きます。</p>
+        </div>
+        <div class="flow">
+          <div class="flow-card"><strong>院内データ</strong><span>カルテ・PDF・院内文書・研究資料など</span></div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-card"><strong>GENBA AI</strong><span>Local LLM・RAG・AI Agentを院内ハードウェア上で実行</span></div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-card cloud"><strong>Cloud LLM</strong><span>通常運用では患者データを外部LLMへ送信しない構成</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="dark-section">
+      <div class="wrap">
+        <div class="section-title">
+          <div class="eyebrow">Offline by Default</div>
+          <h2>インターネットがなくても、<br>AIは使える。</h2>
+          <p>通常運用はインターネット接続なしを標準構成に。データ処理は現場のハードウェア上で完結します。</p>
+        </div>
+        <div class="feature-grid">
+          <article class="feature"><div class="icon">⌁</div><h3>院内処理</h3><p>機密データを扱う推論・検索・要約をローカル環境で処理します。</p></article>
+          <article class="feature"><div class="icon">◈</div><h3>専用AI Agent</h3><p>院内文書、業務フロー、研究用途に合わせて施設ごとのAI Agentを構築します。</p></article>
+          <article class="feature"><div class="icon">↻</div><h3>継続アップデート</h3><p>ハードウェア導入後も、モデル・Agent・セキュリティ更新を継続的に提供します。</p></article>
+        </div>
+      </div>
+    </section>
+
+    <section id="usecases">
+      <div class="wrap">
+        <div class="section-title">
+          <div class="eyebrow">Healthcare Use Cases</div>
+          <h2>医療現場の情報整理を、<br>もっと速く。</h2>
+          <p>診断そのものではなく、情報の検索・要約・文書作成・研究支援から導入できます。最終確認と判断は医療従事者が行います。</p>
+        </div>
+        <div class="usecases">
+          <article class="usecase"><div class="emoji">▤</div><h4>カルテ要約</h4><p>長い診療履歴から必要情報を整理。</p></article>
+          <article class="usecase"><div class="emoji">⌕</div><h4>院内文書検索</h4><p>規程・マニュアル・資料を自然言語で検索。</p></article>
+          <article class="usecase"><div class="emoji">◉</div><h4>音声→文書</h4><p>院内で音声を文字化し、文書作成を支援。</p></article>
+          <article class="usecase"><div class="emoji">⌬</div><h4>研究支援</h4><p>研究資料の検索・分類・要約を支援。</p></article>
+          <article class="usecase"><div class="emoji">✦</div><h4>Custom Agent</h4><p>施設独自の業務に合わせてAIをカスタマイズ。</p></article>
+        </div>
+      </div>
+    </section>
+
+    <section id="updates">
+      <div class="wrap">
+        <div class="update-box">
+          <div>
+            <div class="eyebrow">GENBA Update</div>
+            <h3>オフラインでも、<br>AIは古くならない。</h3>
+            <p>GENBA AI本体を常時インターネットへ接続する必要はありません。検証済みのモデル、Agent、セキュリティ更新を、署名済みのオフライン更新パッケージとして定期提供する運用を想定しています。</p>
+          </div>
+          <div class="update-steps">
+            <div class="step"><b>1</b><div><strong>更新通知を受け取る</strong><span>新モデル・機能・セキュリティ更新をご案内。</span></div></div>
+            <div class="step"><b>2</b><div><strong>別端末で取得</strong><span>院内AI本体をインターネットへ直接接続せず取得。</span></div></div>
+            <div class="step"><b>3</b><div><strong>院内で適用</strong><span>検証済みパッケージを現場の環境へ適用。</span></div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="plans">
+      <div class="wrap">
+        <div class="section-title">
+          <div class="eyebrow">Products</div>
+          <h2>まずは1台から。<br>必要なら、ラックまで。</h2>
+          <p>現場の規模と必要なモデルサイズに合わせて、3段階のPrivate AI Infrastructureを提供します。</p>
+        </div>
+        <div class="plans">
+          <article class="plan primary">
+            <span class="status">導入相談 受付中</span>
+            <h3>GENBA Studio</h3>
+            <div class="for">小規模クリニック・オフィス向け</div>
+            <div class="mini-device"><div class="mini-studio"></div></div>
+            <ul>
+              <li>Mac Studio ベース</li>
+              <li>Local LLM / Private RAG</li>
+              <li>施設専用AI Agent</li>
+              <li>通常運用はオフライン構成</li>
+              <li>導入・初期設定・継続サポート</li>
+            </ul>
+            <a class="btn" href="#contact">導入相談を予約する</a>
+          </article>
+
+          <article class="plan">
+            <span class="status soon">Coming Soon</span>
+            <h3>GENBA Rack</h3>
+            <div class="for">中規模施設・研究機関向け</div>
+            <div class="mini-device"><div class="mini-rack"></div></div>
+            <ul>
+              <li>Custom GPU Server / Rack</li>
+              <li>より大きなLocal LLM</li>
+              <li>複数ユーザーでの利用</li>
+              <li>既存電源・空調の範囲で構成</li>
+              <li>導入・保守・モデル更新</li>
+            </ul>
+            <a class="btn secondary" href="#contact">先行案内を受け取る</a>
+          </article>
+
+          <article class="plan">
+            <span class="status soon">Coming Soon</span>
+            <h3>GENBA Infrastructure</h3>
+            <div class="for">病院・大規模施設向け</div>
+            <div class="mini-device"><div class="mini-infra"><span></span><span></span><span></span></div></div>
+            <ul>
+              <li>GPU / Rack 設計・構築</li>
+              <li>電源・配電設備</li>
+              <li>冷却・排熱設計</li>
+              <li>Network / UPS / Monitoring</li>
+              <li>AI Software Stack・継続保守</li>
+            </ul>
+            <a class="btn secondary" href="#contact">先行案内を受け取る</a>
+          </article>
+        </div>
+
+        <div class="subscription">
+          <div>
+            <div class="eyebrow">Subscription</div>
+            <h3>ハードウェアを買って、<br>終わりではない。</h3>
+            <p>すべての製品で継続サポートプランを用意。Local LLMの更新、AI Agentの改善、セキュリティ更新、現場ごとのカスタマイズを継続します。</p>
+          </div>
+          <div class="checklist">
+            <div>✓ Local LLM モデル更新</div>
+            <div>✓ Custom AI Agent 改善</div>
+            <div>✓ Offline Update Package</div>
+            <div>✓ セキュリティ・運用サポート</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="cta" id="contact">
+      <div class="wrap">
+        <div class="eyebrow">Early Access</div>
+        <h2>Your Data.<br>Your AI.</h2>
+        <p>GENBA Studioの導入相談、またはRack / Infrastructureの先行案内を希望する方へ。<br>メールアドレスをご登録ください。</p>
+        <form class="email-form" id="waitlist-form">
+          <input id="email" type="email" name="email" autocomplete="email" placeholder="you@example.jp" aria-label="メールアドレス" required />
+          <button class="btn" type="submit">案内を受け取る</button>
+        </form>
+        <div class="form-message" id="form-message" aria-live="polite"></div>
+        <p class="form-note">患者情報・診療情報などの機密情報は、このフォームから送信しないでください。</p>
+        <div class="legal">※ 本サイトはGENBA AIの先行案内ページです。製品仕様・提供内容は開発状況により変更される場合があります。GENBA AIは医療従事者による判断を代替するものではありません。</div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="wrap footer-inner">
+      <strong>GENBA AI</strong>
+      <span>Private AI Infrastructure for the Real World.</span>
+      <span>© 2026 GENBA AI</span>
+    </div>
+  </footer>
+
+  <script>
+    // GitHub Pages is static. Set this to your form backend endpoint
+    // (e.g. Formspree / Basin / your own API) when ready.
+    const WAITLIST_ENDPOINT = "";
+
+    const form = document.getElementById("waitlist-form");
+    const message = document.getElementById("form-message");
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const email = document.getElementById("email").value.trim();
+      if (!email) return;
+
+      if (!WAITLIST_ENDPOINT) {
+        localStorage.setItem("genba-ai-waitlist-email", email);
+        message.textContent = "ありがとうございます。フォーム受付先の公開準備中です。";
+        return;
+      }
+
+      try {
+        const response = await fetch(WAITLIST_ENDPOINT, {
+          method: "POST",
+          headers: {"Content-Type": "application/json"},
+          body: JSON.stringify({ email, source: "genba-ai-healthcare" })
+        });
+        if (!response.ok) throw new Error("request failed");
+        form.reset();
+        message.textContent = "登録しました。ご案内をお送りします。";
+      } catch {
+        message.textContent = "送信できませんでした。時間をおいて再度お試しください。";
+      }
+    });
+  </script>
+</body>
+</html>
