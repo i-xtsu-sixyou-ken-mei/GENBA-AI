@@ -1,33 +1,53 @@
 # GENBA AI
 
-Static landing page for **GENBA AI**.
+Landing page for **GENBA AI**, built with Vite and Vanilla TypeScript.
 
-## Local preview
+## Local development
 
-Open `index.html` directly in a browser, or run any static file server.
+```bash
+npm install
+npm run dev
+```
+
+Open `http://localhost:5173/GENBA-AI/` in a browser (the dev server respects the `/GENBA-AI/` base path).
+
+## Production build
+
+```bash
+npm run build
+```
+
+The production output is written to `dist/`.
 
 ## GitHub Pages
 
-The site is fully static and deployable from the repository root.
-
-A Pages workflow is included at:
+The repository uses a GitHub Actions Pages workflow at:
 
 `.github/workflows/pages.yml`
 
-For the first deployment, enable GitHub Pages once in:
+Pull requests run the Vite build as a validation check. Pushes to `main` build and deploy `dist/` to GitHub Pages.
 
-**Settings → Pages → Build and deployment → Source → GitHub Actions**
+Current Pages base path:
 
-After that, pushes to `main` deploy automatically.
+`/GENBA-AI/`
 
 Expected URL:
 
 `https://i-xtsu-sixyou-ken-mei.github.io/GENBA-AI/`
 
+## Brand assets
+
+- `public/logo.webp` — GENBA AI primary logo
+- `public/favicon.svg` — compact GENBA AI mark
+
+## Privacy
+
+The site includes `privacy.html` and links to it from the lead form and footer.
+
 ## Waitlist form
 
-The landing page contains the email capture UI, but GitHub Pages itself has no backend.
+The email capture UI is wired in `src/main.ts`, but no remote form backend is configured yet.
 
-Set `WAITLIST_ENDPOINT` near the bottom of `index.html` to a Formspree/Basin/custom API endpoint to begin storing submissions.
+Set `WAITLIST_ENDPOINT` to a Formspree, Basin, Supabase Edge Function, or another API endpoint when lead storage is ready.
 
-Until an endpoint is configured, the form only shows the pre-launch confirmation locally and does not transmit the email off-device.
+Until an endpoint is configured, submissions are kept only in the visitor's local storage and are not transmitted off-device.
