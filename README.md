@@ -9,6 +9,8 @@ npm install
 npm run dev
 ```
 
+Open `http://localhost:5173/GENBA-AI/` in a browser (the dev server respects the `/GENBA-AI/` base path).
+
 ## Production build
 
 ```bash
