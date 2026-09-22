@@ -1,47 +1,44 @@
-const WAITLIST_ENDPOINT = "";
+import { SALES_EMAIL, SUPPORT_EMAIL } from "./config";
+import { initWaitlist } from "./waitlist";
 
-const form = document.querySelector<HTMLFormElement>("#waitlist-form");
-const message = document.querySelector<HTMLElement>("#form-message");
-const interest = document.querySelector<HTMLSelectElement>("#interest");
-const emailInput = document.querySelector<HTMLInputElement>("#email");
+function initInterestLinks(): void {
+  const interest = document.querySelector<HTMLSelectElement>("#interest");
+  if (!interest) return;
 
-document.querySelectorAll<HTMLAnchorElement>(".interest-link").forEach((link) => {
-  link.addEventListener("click", () => {
-    if (!interest) return;
-    interest.value = link.dataset.interest || "GENBA Studio";
-  });
-});
-
-form?.addEventListener("submit", async (event) => {
-  event.preventDefault();
-  if (!message || !interest || !emailInput) return;
-
-  const email = emailInput.value.trim();
-  if (!email) return;
-
-  if (!WAITLIST_ENDPOINT) {
-    localStorage.setItem("genba-ai-waitlist-email", email);
-    localStorage.setItem("genba-ai-waitlist-interest", interest.value);
-    message.textContent = "ありがとうございます。フォーム受付先の公開準備中です。";
-    return;
-  }
-
-  try {
-    const response = await fetch(WAITLIST_ENDPOINT, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        email,
-        interest: interest.value,
-        source: "genba-ai-healthcare",
-      }),
+  document.querySelectorAll<HTMLAnchorElement>(".interest-link").forEach((link) => {
+    link.addEventListener("click", () => {
+      interest.value = link.dataset.interest || "GENBA Studio";
     });
+  });
+}
 
-    if (!response.ok) throw new Error("request failed");
+function initContactEmails(): void {
+  const row = document.querySelector<HTMLElement>("[data-contact-row]");
+  const sales =
+    document.querySelector<HTMLAnchorElement>("[data-sales-email]");
+  const support =
+    document.querySelector<HTMLAnchorElement>("[data-support-email]");
 
-    form.reset();
-    message.textContent = "登録しました。ご案内をお送りします。";
-  } catch {
-    message.textContent = "送信できませんでした。時間をおいて再度お試しください。";
+  const entries: Array<[HTMLAnchorElement | null, string]> = [
+    [sales, SALES_EMAIL],
+    [support, SUPPORT_EMAIL],
+  ];
+
+  let visible = 0;
+  for (const [element, email] of entries) {
+    if (!element) continue;
+    if (!email) {
+      element.hidden = true;
+      continue;
+    }
+    element.href = `mailto:${email}`;
+    element.textContent = email;
+    visible += 1;
   }
-});
+
+  if (row) row.hidden = visible === 0;
+}
+
+initInterestLinks();
+initContactEmails();
+initWaitlist();

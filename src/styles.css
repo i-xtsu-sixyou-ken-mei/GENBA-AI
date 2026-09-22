@@ -228,6 +228,8 @@
       .usecase p{font-size:13px}
 
       .update-box,.subscription{padding:24px;border-radius:22px}
+      .pricing-anchor{padding:24px;border-radius:22px}
+      .pricing-anchor h3{font-size:32px}
       .update-box{gap:20px}
       .update-box h3{font-size:34px}
       .update-box p{font-size:14px}
@@ -286,6 +288,22 @@
 .privacy-section p,.privacy-section li{font-size:15px;line-height:1.9;color:#424245}
 .privacy-section ul{padding-left:1.3em;margin:0}
 .privacy-updated{margin-top:42px;font-size:13px;color:var(--muted)}
+.pricing-anchor{
+  margin-top:18px;background:#fff;border:1px solid rgba(0,0,0,.06);border-radius:30px;padding:54px;
+  display:grid;grid-template-columns:1.2fr .8fr;gap:50px;align-items:center;
+  box-shadow:0 12px 38px rgba(0,0,0,.05)
+}
+.pricing-anchor h3{font-size:42px;line-height:1.1;letter-spacing:-.045em;margin:8px 0 16px}
+.pricing-anchor p{color:var(--muted);line-height:1.8}
+.price-list{list-style:none;margin:0;padding:0;display:grid;gap:12px}
+.price-list li{padding:14px 16px;border:1px solid #e5e5e7;border-radius:14px;background:#fafafa}
+.price-list strong{display:block;font-size:15px}
+.price-list span{font-size:13px;color:var(--muted)}
+.contact-row{font-size:13px!important}
+.contact-row a{text-decoration:underline;text-underline-offset:3px}
+@media(max-width:900px){
+  .pricing-anchor{grid-template-columns:1fr}
+}
 @media(max-width:560px){
   .brand-mark{width:24px;height:24px}
   .privacy-shell{width:min(100% - 28px,860px);padding:44px 0 72px}

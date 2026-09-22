@@ -46,8 +46,16 @@ The site includes `privacy.html` and links to it from the lead form and footer.
 
 ## Waitlist form
 
-The email capture UI is wired in `src/main.ts`, but no remote form backend is configured yet.
+`src/waitlist.ts` posts leads as JSON to the endpoint in `src/config.ts`
+(`VITE_WAITLIST_ENDPOINT`, see `.env.example`). Basin and Formspree both
+accept this format (~50 free submissions/month each).
 
-Set `WAITLIST_ENDPOINT` to a Formspree, Basin, Supabase Edge Function, or another API endpoint when lead storage is ready.
+1. Create a form at Basin/Formspree and copy the endpoint URL.
+2. Copy `.env.example` to `.env`, set `VITE_WAITLIST_ENDPOINT` (plus
+   `VITE_SALES_EMAIL` / `VITE_SUPPORT_EMAIL` to show contact emails).
+3. `npm run build` — values are embedded at build time.
 
-Until an endpoint is configured, submissions are kept only in the visitor's local storage and are not transmitted off-device.
+Until an endpoint is configured, submissions are queued only in the visitor's
+local storage (`genba-ai-waitlist-queue`) and are not transmitted off-device.
+UTM params + referrer are captured per session (`src/analytics.ts`) and sent
+with each lead.
