@@ -25,7 +25,14 @@
 
     <section class="privacy-section">
       <h2>1. 取得する情報</h2>
-      <p>当サイトの導入相談・先行案内フォームでは、メールアドレスおよび関心のある製品・プランに関する情報を取得する場合があります。</p>
+      <p>当サイトの導入相談・先行案内フォームでは、以下の情報を取得する場合があります。</p>
+      <ul>
+        <li>メールアドレス（必須）</li>
+        <li>関心のある製品・プラン（選択内容）</li>
+        <li>施設名・会社名、お名前（任意入力の場合のみ）</li>
+        <li>流入元の計測情報：UTMパラメータ（utm_source / utm_medium / utm_campaign / utm_term / utm_content）、リファラー、初回訪問ページURL、送信時ページURL、送信日時</li>
+      </ul>
+      <p>流入元の計測情報は、同一セッション内では初回訪問時の値を保持し（ファーストタッチ）、どの案内経路からのお問い合わせかを把握するために利用します。</p>
     </section>
 
     <section class="privacy-section">
@@ -35,6 +42,7 @@
         <li>製品、PoC、Early Access、アップデート等のご案内</li>
         <li>お問い合わせへの連絡および必要なフォローアップ</li>
         <li>サービス提供内容の改善および需要の把握</li>
+        <li>案内経路ごとの効果測定（UTM、リファラー、訪問ページ情報を利用）</li>
       </ul>
     </section>
 
@@ -45,7 +53,7 @@
 
     <section class="privacy-section">
       <h2>4. 第三者提供</h2>
-      <p>法令に基づく場合を除き、本人の同意なく取得した個人情報を第三者へ提供しません。フォーム受付、メール配信、ホスティング等に必要なサービス提供者を利用する場合は、利用目的の達成に必要な範囲で取り扱いを委託することがあります。</p>
+      <p>法令に基づく場合を除き、本人の同意なく取得した個人情報を第三者へ提供しません。フォーム受付、メール配信、ホスティング等に必要なサービス提供者を利用する場合は、利用目的の達成に必要な範囲で取り扱いを委託することがあります。フォーム送信データは、受付先として設定されたフォームサービス（Basin / Formspree 等）に送信・保管される場合があります。</p>
     </section>
 
     <section class="privacy-section">
@@ -56,6 +64,7 @@
     <section class="privacy-section">
       <h2>6. 開示・訂正・削除等</h2>
       <p>本人から自身の個人情報について開示、訂正、利用停止または削除等の申し出があった場合、法令に従い適切に対応します。ご連絡は当サイトの導入相談窓口をご利用ください。</p>
+      <p class="contact-row" data-contact-row hidden>連絡先：<a data-sales-email href="#">sales</a> · <a data-support-email href="#">support</a></p>
     </section>
 
     <section class="privacy-section">
@@ -63,7 +72,8 @@
       <p>サービス内容や法令等の変更に応じ、本ポリシーを改定することがあります。重要な変更がある場合は、本ウェブサイト上でお知らせします。</p>
     </section>
 
-    <p class="privacy-updated">制定日：2026年9月19日</p>
+    <p class="privacy-updated">制定日：2026年9月19日 ／ 改定日：2026年9月22日</p>
   </main>
+  <script type="module" src="/src/main.ts"></script>
 </body>
 </html>

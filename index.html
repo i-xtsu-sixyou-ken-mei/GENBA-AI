@@ -8,9 +8,13 @@
   <meta property="og:title" content="GENBA AI | AIを、現場へ。" />
   <meta property="og:description" content="患者データをクラウドへ送らず、院内で動かすPrivate AI Infrastructure。" />
   <meta property="og:type" content="website" />
-  <meta property="og:image" content="https://i-xtsu-sixyou-ken-mei.github.io/GENBA-AI/logo.webp" />
+  <meta property="og:image" content="https://i-xtsu-sixyou-ken-mei.github.io/GENBA-AI/og-card.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:alt" content="GENBA AI — Private AI Infrastructure for Healthcare" />
   <meta property="og:url" content="https://i-xtsu-sixyou-ken-mei.github.io/GENBA-AI/" />
-  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:image" content="https://i-xtsu-sixyou-ken-mei.github.io/GENBA-AI/og-card.png" />
   <meta name="robots" content="index,follow" />
   <link rel="canonical" href="https://i-xtsu-sixyou-ken-mei.github.io/GENBA-AI/" />
   <title>GENBA AI | AIを、現場へ。</title>
@@ -28,7 +32,7 @@
         <a href="#usecases">活用例</a>
         <a href="#plans">製品</a>
         <a href="#updates">アップデート</a>
-        <a class="nav-cta" href="#contact">導入相談を予約する</a>
+        <a class="nav-cta" href="#contact">導入相談を申し込む</a>
       </nav>
     </div>
   </header>
@@ -41,7 +45,7 @@
         <p class="lead">患者データは、そのまま院内に。</p>
         <p class="sub">GENBA AIは、機密データをクラウドLLMへ送らずに使えるオンプレミスPrivate AIです。まずはMac Studioから、現場専用のAI環境を始められます。</p>
         <div class="hero-actions">
-          <a class="btn interest-link" data-interest="GENBA Studio" href="#contact">導入相談を予約する</a>
+            <a class="btn interest-link" data-interest="GENBA Studio" href="#contact">導入相談を申し込む</a>
           <a class="btn secondary" href="#plans">製品を見る</a>
         </div>
         <div class="device-stage" aria-label="GENBA Studio">
@@ -136,7 +140,7 @@
               <li>通常運用はオフライン構成</li>
               <li>導入・初期設定・継続サポート</li>
             </ul>
-            <a class="btn interest-link" data-interest="GENBA Studio" href="#contact">導入相談を予約する</a>
+          <a class="btn interest-link" data-interest="GENBA Studio" href="#contact">導入相談を申し込む</a>
           </article>
 
           <article class="plan">
@@ -214,6 +218,8 @@
           </select>
         </div>
         <form class="email-form" id="waitlist-form">
+          <input id="organization" type="text" name="organization" autocomplete="organization" placeholder="施設名・会社名（任意）" aria-label="施設名・会社名（任意）" />
+          <input id="contact-name" type="text" name="name" autocomplete="name" placeholder="お名前（任意）" aria-label="お名前（任意）" />
           <input id="email" type="email" name="email" autocomplete="email" placeholder="you@example.jp" aria-label="メールアドレス" required />
           <button class="btn" type="submit">案内を受け取る</button>
         </form>

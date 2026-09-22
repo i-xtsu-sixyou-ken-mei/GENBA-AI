@@ -50,12 +50,27 @@ The site includes `privacy.html` and links to it from the lead form and footer.
 (`VITE_WAITLIST_ENDPOINT`, see `.env.example`). Basin and Formspree both
 accept this format (~50 free submissions/month each).
 
+Local setup:
+
 1. Create a form at Basin/Formspree and copy the endpoint URL.
 2. Copy `.env.example` to `.env`, set `VITE_WAITLIST_ENDPOINT` (plus
    `VITE_SALES_EMAIL` / `VITE_SUPPORT_EMAIL` to show contact emails).
 3. `npm run build` — values are embedded at build time.
 
-Until an endpoint is configured, submissions are queued only in the visitor's
-local storage (`genba-ai-waitlist-queue`) and are not transmitted off-device.
-UTM params + referrer are captured per session (`src/analytics.ts`) and sent
-with each lead.
+Production (GitHub Pages) setup — required, otherwise the live build ships
+with empty values and leads stay in the visitor's browser only:
+
+1. Repo → Settings → Secrets and variables → Actions → **Variables** tab.
+2. Add (public-by-design, never secrets):
+   - `VITE_WAITLIST_ENDPOINT` — Basin/Formspree endpoint URL
+   - `VITE_SALES_EMAIL`, `VITE_SUPPORT_EMAIL` — contact addresses
+   - `VITE_ANALYTICS_ENDPOINT` — optional
+3. Push to `main` — `.github/workflows/pages.yml` injects these into
+   `npm run build` via `vars.*`.
+
+Reliability: failed/offline submissions are queued in local storage
+(`genba-ai-waitlist-queue`) and auto-retried on page load and on the
+browser `online` event (only successful posts are removed).
+UTM params + first-touch referrer/landing URL are captured per session
+(`src/analytics.ts`) and sent with each lead. Collected fields are listed
+in `privacy.html` §1.
