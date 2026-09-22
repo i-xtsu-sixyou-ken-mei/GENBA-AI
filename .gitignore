@@ -5,3 +5,7 @@ dist/
 .env.local
 .env.*.local
 .opencode/goals/
+
+# Supabase CLI local state (project link, temp files -- never commit).
+supabase/.branches
+supabase/.temp
