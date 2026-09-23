@@ -2,16 +2,12 @@
 // Fill in the values below (or via `.env`, see `.env.example`) and rebuild.
 //
 // Leads go to the Supabase Edge Function `genba-lead`, which inserts into
-// `genba_ai.leads` with the server-side secret key. The browser never
-// touches the database directly -- only the publishable key is embedded
-// here (public by design). Never add a `VITE_*` secret key.
+// `genba_ai.leads` with the server-side secret key. The function is public
+// and needs no key, so the bundle embeds no Supabase key at all -- only the
+// project URL. Never add a `VITE_*` key of any kind.
 
 /** Supabase project URL, e.g. https://xxxxx.supabase.co */
 export const SUPABASE_URL: string = import.meta.env.VITE_SUPABASE_URL ?? "";
-
-/** Publishable key (`sb_publishable_...`). Safe to embed in the bundle. */
-export const SUPABASE_PUBLISHABLE_KEY: string =
-  import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ?? "";
 
 /** Lead endpoint. Empty = queue submissions locally until configured. */
 export const LEAD_ENDPOINT: string = SUPABASE_URL
