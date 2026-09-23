@@ -1,9 +1,11 @@
 -- GENBA AI lead capture: isolated namespace sharing the Zap Pilot project.
 --
--- Apply via Supabase Dashboard > SQL Editor (or `supabase db push` if linked).
+-- Idempotent; apply with:
+--   npm run ops -- sql supabase/migrations/20260922000000_create_genba_ai_leads.sql
+-- (Management API -- never `supabase db push`: the shared project's
+-- migration history belongs to zapEngine.) PostgREST exposure is a separate
+-- step: *_expose_genba_ai_schema.sql.
 --
--- After applying, go to Dashboard > Project Settings > Data API > Exposed
--- schemas and add `genba_ai` ONLY if the Edge Function uses PostgREST.
 -- Grants below give access to `service_role` only -- never grant
 -- `anon` / `authenticated`, so browsers cannot read/write leads directly.
 
