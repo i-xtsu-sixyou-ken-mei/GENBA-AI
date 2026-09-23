@@ -1,0 +1,320 @@
+#!/usr/bin/env bash
+# Every GENBA operation against the shared (zapEngine-owned) Supabase project
+# goes through this script:   npm run ops -- <task> [args]
+#
+#   sql <file>          run an idempotent SQL file via the Management API
+#                       (never records anything in the migration history)
+#   check               read-only report; exits 1 if a zapEngine invariant broke
+#   secrets             set GENBA_LEAD_ALLOWED_ORIGINS (project-wide secret)
+#   deploy              deploy ONLY genba-lead (server-side bundle, no Docker)
+#   dev                 vite dev server against the live function -- leads
+#                       you submit are written to the PRODUCTION table
+#   e2e                 API-level end-to-end test of the deployed function
+#   e2e-cleanup [--yes] list, then delete, e2e+*@example.com test rows
+#   gh-vars             set the VITE_SUPABASE_URL GitHub Actions variable
+#
+# NEVER run against the shared project (each one breaks zapEngine):
+#   - supabase db push / db reset / migration repair / migration up:
+#     zapEngine's CI `db push`es its own history, and any GENBA version in
+#     supabase_migrations.schema_migrations breaks its deploys.
+#   - supabase config push: overwrites project-wide auth / API settings.
+#   - supabase functions deploy --prune, or deploy without a function name:
+#     deletes or redeploys zapEngine's functions.
+#   - overwriting authenticator's pgrst.db_schemas: append only (see
+#     supabase/migrations/*_expose_genba_ai_schema.sql).
+#   - writing to the Zap Pilot Infisical project (see scripts/infisical.sh).
+#
+# Secrets live in unexported shell variables and are never printed. Children
+# run under `env -i` with an allowlist; the access token reaches them via a
+# file descriptor or a curl header file, never via argv.
+set -euo pipefail
+
+ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+INFISICAL="$ROOT/scripts/infisical.sh"
+SUPABASE_CLI=(npx --yes supabase@2.117.0)
+MGMT_API="https://api.supabase.com/v1"
+FUNCTION_NAME="genba-lead"
+SITE_ORIGIN="https://i-xtsu-sixyou-ken-mei.github.io"
+DEV_ORIGIN="http://localhost:5173"
+E2E_EMAIL_LIKE='e2e+%@example.com'
+# zapEngine's exposed schemas; they must survive every GENBA change.
+ZAP_SCHEMAS='["public","graphql_public","review_web","from_fed_to_chain"]'
+
+SUPABASE_URL=""
+PROJECT_REF=""
+SUPABASE_ACCESS_TOKEN=""
+
+die() {
+  echo "error: $*" >&2
+  exit 1
+}
+
+log() { echo "==> $*" >&2; }
+
+load_project() {
+  local url
+  url=$("$INFISICAL" zap -- printenv SUPABASE_URL) ||
+    die "cannot read SUPABASE_URL from the Zap Pilot Infisical project (prod /)"
+  [[ $url =~ ^https://([a-z0-9]{20})\.supabase\.co/?$ ]] ||
+    die "SUPABASE_URL is not of the form https://<20-char ref>.supabase.co"
+  PROJECT_REF=${BASH_REMATCH[1]}
+  SUPABASE_URL="https://$PROJECT_REF.supabase.co"
+}
+
+load_token() {
+  SUPABASE_ACCESS_TOKEN=$("$INFISICAL" genba -- printenv SUPABASE_ACCESS_TOKEN) ||
+    die "cannot read SUPABASE_ACCESS_TOKEN from the genba-ai Infisical project (prod /)"
+  [[ $SUPABASE_ACCESS_TOKEN == sbp_* ]] ||
+    die "SUPABASE_ACCESS_TOKEN does not look like a personal access token (sbp_...)"
+}
+
+# Fill CLEAN_ENV with the non-secret variables children may inherit, plus
+# any extra names given.
+clean_env() {
+  CLEAN_ENV=()
+  local name
+  for name in PATH HOME TMPDIR TERM LANG LC_ALL "$@"; do
+    if [[ -n ${!name+x} ]]; then CLEAN_ENV+=("$name=${!name}"); fi
+  done
+}
+
+# Run a command with SUPABASE_ACCESS_TOKEN exported, handed over on fd 3.
+run_with_token() {
+  clean_env
+  env -i "${CLEAN_ENV[@]}" bash -c \
+    'IFS= read -r SUPABASE_ACCESS_TOKEN <&3; exec 3<&-; export SUPABASE_ACCESS_TOKEN; exec "$@"' \
+    bash "$@" 3< <(printf '%s\n' "$SUPABASE_ACCESS_TOKEN")
+}
+
+# mgmt_query <sql> [read_only=true|false] [params JSON array] -> JSON rows
+mgmt_query() {
+  local sql=$1 read_only=${2:-false} params=${3:-[]} body
+  body=$(jq -n --arg q "$sql" --argjson ro "$read_only" --argjson p "$params" \
+    '{query: $q, read_only: $ro} + (if ($p | length) > 0 then {parameters: $p} else {} end)')
+  curl -sS --fail-with-body \
+    -X POST "$MGMT_API/projects/$PROJECT_REF/database/query" \
+    -H @<(printf 'Authorization: Bearer %s\n' "$SUPABASE_ACCESS_TOKEN") \
+    -H "Content-Type: application/json" \
+    --data-binary @- <<<"$body"
+}
+
+task_sql() {
+  local file=${1:-}
+  [[ -n $file && -f $file ]] || die "usage: npm run ops -- sql <file.sql>"
+  if grep -qi 'supabase_migrations' "$file"; then
+    die "$file references supabase_migrations -- GENBA never touches zapEngine's migration history"
+  fi
+  load_project
+  load_token
+  log "applying $file via the Management API (no migration history)"
+  mgmt_query "$(cat "$file")" false | jq .
+}
+
+read -r -d '' CHECK_SQL <<'SQL' || true
+with leads as (select to_regclass('genba_ai.leads') as oid),
+ns as (select oid from pg_namespace where nspname = 'genba_ai'),
+pgrst as (
+  select regexp_replace(setting, '^pgrst\.db_schemas=', '') as schemas
+  from pg_db_role_setting settings
+  join pg_roles roles on roles.oid = settings.setrole
+  cross join lateral unnest(settings.setconfig) setting
+  where roles.rolname = 'authenticator'
+    and setting like 'pgrst.db_schemas=%'
+  limit 1
+)
+select
+  (select oid from leads) is not null as leads_table_exists,
+  coalesce((select relrowsecurity from pg_class
+            where oid = (select oid from leads)), false) as leads_rls_enabled,
+  coalesce(has_schema_privilege('anon', (select oid from ns), 'USAGE'), false)
+    or coalesce(has_table_privilege('anon', (select oid from leads),
+         'SELECT,INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER'), false)
+    as anon_has_access,
+  coalesce(has_schema_privilege('authenticated', (select oid from ns), 'USAGE'), false)
+    or coalesce(has_table_privilege('authenticated', (select oid from leads),
+         'SELECT,INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER'), false)
+    as authenticated_has_access,
+  coalesce(has_schema_privilege('service_role', (select oid from ns), 'USAGE')
+    and has_table_privilege('service_role', (select oid from leads), 'INSERT'), false)
+    as service_role_can_insert,
+  (select schemas from pgrst) as pgrst_db_schemas,
+  (select count(*) from supabase_migrations.schema_migrations) as schema_migrations_count,
+  (select count(*) from supabase_migrations.schema_migrations
+   where version in ('20260922000000', '20260923021804')) as genba_versions_in_history
+SQL
+
+task_check() {
+  load_project
+  load_token
+  local report
+  report=$(mgmt_query "$CHECK_SQL" true | jq '.[0]')
+  jq . <<<"$report"
+  jq -r --argjson zap "$ZAP_SCHEMAS" '
+    (.pgrst_db_schemas // "" | split(",") | map(gsub("^\\s+|\\s+$"; ""))) as $exposed
+    | [
+        ["invariant", "zapEngine schemas still exposed \($zap | join(","))",
+          ($zap - $exposed | length) == 0],
+        ["invariant", "no GENBA version in the migration history",
+          (.genba_versions_in_history | tonumber) == 0],
+        ["genba", "genba_ai.leads exists", .leads_table_exists],
+        ["genba", "RLS enabled on genba_ai.leads", .leads_rls_enabled],
+        ["genba", "anon has no access", (.anon_has_access | not)],
+        ["genba", "authenticated has no access", (.authenticated_has_access | not)],
+        ["genba", "service_role can insert", .service_role_can_insert],
+        ["genba", "genba_ai in pgrst.db_schemas", ($exposed | index("genba_ai")) != null]
+      ][]
+    | "\(if .[2] then "OK" else "NG" end)  [\(.[0])] \(.[1])"
+  ' <<<"$report"
+  jq -e --argjson zap "$ZAP_SCHEMAS" '
+    (.pgrst_db_schemas // "" | split(",") | map(gsub("^\\s+|\\s+$"; ""))) as $exposed
+    | ($zap - $exposed | length) == 0 and (.genba_versions_in_history | tonumber) == 0
+  ' <<<"$report" >/dev/null || die "a zapEngine invariant is broken -- stop and investigate"
+}
+
+task_secrets() {
+  load_project
+  load_token
+  log "setting GENBA_LEAD_ALLOWED_ORIGINS (function secrets are project-wide)"
+  run_with_token "${SUPABASE_CLI[@]}" secrets set \
+    "GENBA_LEAD_ALLOWED_ORIGINS=$SITE_ORIGIN,$DEV_ORIGIN" \
+    --project-ref "$PROJECT_REF"
+}
+
+task_deploy() {
+  load_project
+  load_token
+  log "deploying ONLY $FUNCTION_NAME (server-side bundle, verify_jwt off)"
+  run_with_token "${SUPABASE_CLI[@]}" functions deploy "$FUNCTION_NAME" \
+    --project-ref "$PROJECT_REF" --no-verify-jwt --use-api
+}
+
+task_dev() {
+  load_project
+  log "vite dev against the live genba-lead -- submitted leads go to the PRODUCTION table"
+  clean_env
+  exec env -i "${CLEAN_ENV[@]}" "VITE_SUPABASE_URL=$SUPABASE_URL" npm run dev
+}
+
+task_gh_vars() {
+  load_project
+  clean_env GH_TOKEN GITHUB_TOKEN GH_HOST GH_CONFIG_DIR XDG_CONFIG_HOME
+  # Value on stdin (no trailing newline): nothing echoed, nothing in argv.
+  printf '%s' "$SUPABASE_URL" |
+    env -i "${CLEAN_ENV[@]}" gh variable set VITE_SUPABASE_URL
+}
+
+FAILURES=0
+
+expect() {
+  if [[ $2 == "$3" ]]; then
+    echo "PASS  $1"
+  else
+    echo "FAIL  $1 (expected $2, got ${3:-<empty>})"
+    FAILURES=$((FAILURES + 1))
+  fi
+}
+
+# call_fn <METHOD> <origin> [json] -> HTTP_STATUS, HTTP_ERROR, HTTP_ACAO
+call_fn() {
+  local method=$1 origin=$2 data=${3:-} out headers
+  out=$(mktemp)
+  headers=$(mktemp)
+  local args=(-sS -o "$out" -D "$headers" -w '%{http_code}' -X "$method"
+    "$SUPABASE_URL/functions/v1/$FUNCTION_NAME" -H "Origin: $origin")
+  if [[ $method == OPTIONS ]]; then
+    args+=(-H "Access-Control-Request-Method: POST"
+      -H "Access-Control-Request-Headers: content-type")
+  else
+    args+=(-H "Content-Type: application/json" --data-binary "$data")
+  fi
+  HTTP_STATUS=$(curl "${args[@]}")
+  HTTP_ERROR=$(jq -r '.error // (if .ok then "ok" else empty end)' "$out" 2>/dev/null || true)
+  HTTP_ACAO=$(grep -i '^access-control-allow-origin:' "$headers" |
+    cut -d' ' -f2- | tr -d '\r' || true)
+  rm -f "$out" "$headers"
+}
+
+lead_json() {
+  jq -n --arg email "$1" '{
+    email: $email, interest: "GENBA Studio", organization: "", name: "e2e",
+    source: "genba-ai-website", utm_source: "e2e", utm_medium: "",
+    utm_campaign: "", utm_term: "", utm_content: "", referrer: "",
+    landing_url: "", page_url: ""
+  }'
+}
+
+count_leads() {
+  mgmt_query "select count(*) as n from genba_ai.leads where email = \$1" true \
+    "$(jq -nc --arg e "$1" '[$e]')" | jq -r '.[0].n'
+}
+
+task_e2e() {
+  load_project
+  load_token
+  local ts email evil_email
+  ts=$(date +%s)
+  email="e2e+$ts@example.com"
+  evil_email="e2e+$ts-evil@example.com"
+  log "e2e lead: $email"
+
+  call_fn OPTIONS "$SITE_ORIGIN"
+  expect "OPTIONS from the site origin -> 204" 204 "$HTTP_STATUS"
+  expect "preflight echoes the site origin" "$SITE_ORIGIN" "$HTTP_ACAO"
+
+  call_fn POST "$SITE_ORIGIN" "$(lead_json "$email")"
+  expect "POST valid lead without any key -> 201" 201 "$HTTP_STATUS"
+  expect "POST valid lead body" ok "$HTTP_ERROR"
+
+  call_fn POST "$SITE_ORIGIN" "$(lead_json "not-an-email")"
+  expect "POST bad email -> 400" 400 "$HTTP_STATUS"
+  expect "POST bad email code" invalid_email "$HTTP_ERROR"
+
+  call_fn POST "https://evil.example" "$(lead_json "$evil_email")"
+  expect "POST from another origin -> 403" 403 "$HTTP_STATUS"
+  expect "POST from another origin code" origin_not_allowed "$HTTP_ERROR"
+
+  expect "valid lead stored exactly once" 1 "$(count_leads "$email")"
+  expect "rejected-origin lead not stored" 0 "$(count_leads "$evil_email")"
+
+  echo "cleanup later: npm run ops -- e2e-cleanup"
+  [[ $FAILURES -eq 0 ]] || die "$FAILURES e2e check(s) failed"
+}
+
+task_e2e_cleanup() {
+  local confirm=${1:-} rows count answer params
+  load_project
+  load_token
+  params=$(jq -nc --arg p "$E2E_EMAIL_LIKE" '[$p]')
+  rows=$(mgmt_query "select email, created_at from genba_ai.leads
+    where email like \$1 order by created_at" true "$params")
+  jq -r '.[] | "\(.created_at)  \(.email)"' <<<"$rows"
+  count=$(jq 'length' <<<"$rows")
+  echo "$count row(s) match email like '$E2E_EMAIL_LIKE'"
+  [[ $count -gt 0 ]] || return 0
+  if [[ $confirm != --yes ]]; then
+    [[ -t 0 ]] || die "no TTY to confirm: rerun with --yes"
+    read -r -p "Delete these $count row(s)? [y/N] " answer
+    [[ $answer == [yY] ]] || die "aborted"
+  fi
+  mgmt_query "with deleted as (delete from genba_ai.leads
+    where email like \$1 returning 1) select count(*) as n from deleted" \
+    false "$params" | jq -r '"deleted \(.[0].n) row(s)"'
+}
+
+cd "$ROOT"
+task=${1:-}
+shift || true
+case "$task" in
+  sql) task_sql "$@" ;;
+  check) task_check ;;
+  secrets) task_secrets ;;
+  deploy) task_deploy ;;
+  dev) task_dev ;;
+  e2e) task_e2e ;;
+  e2e-cleanup) task_e2e_cleanup "$@" ;;
+  gh-vars) task_gh_vars ;;
+  *)
+    sed -n '2,14p' "${BASH_SOURCE[0]}" >&2
+    exit 64
+    ;;
+esac

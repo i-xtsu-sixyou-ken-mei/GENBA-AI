@@ -1,9 +1,5 @@
 import { getAttribution, trackEvent } from "./analytics";
-import {
-  LEAD_ENDPOINT,
-  LEAD_SOURCE,
-  SUPABASE_PUBLISHABLE_KEY,
-} from "./config";
+import { LEAD_ENDPOINT, LEAD_SOURCE } from "./config";
 
 // Payload mirrors the `genba_ai.leads` columns (snake_case). The Edge
 // Function whitelists these keys; `page_url` is submit-time context kept
@@ -29,11 +25,30 @@ const QUEUE_KEY = "genba-ai-lead-queue-v2";
 const LEGACY_QUEUE_KEY = "genba-ai-waitlist-queue";
 
 function isConfigured(): boolean {
-  return Boolean(LEAD_ENDPOINT) && Boolean(SUPABASE_PUBLISHABLE_KEY);
+  return Boolean(LEAD_ENDPOINT);
 }
 
-/** 4xx from the function means retrying won't help (e.g. invalid email). */
-class PermanentError extends Error {}
+type InvalidLeadCode = "invalid_email" | "invalid_interest";
+
+const INVALID_LEAD_MESSAGES: Record<InvalidLeadCode, string> = {
+  invalid_email:
+    "入力内容をご確認ください。メールアドレスが正しくない可能性があります。",
+  invalid_interest: "ご関心のあるプランを選択してください。",
+};
+
+function isInvalidLeadCode(code: string): code is InvalidLeadCode {
+  return Object.prototype.hasOwnProperty.call(INVALID_LEAD_MESSAGES, code);
+}
+
+/** The function validated the payload and rejected it: resending can't help. */
+class InvalidLeadError extends Error {
+  readonly code: InvalidLeadCode;
+
+  constructor(code: InvalidLeadCode) {
+    super(code);
+    this.code = code;
+  }
+}
 
 function readQueue(key: string): LeadPayload[] {
   try {
@@ -56,6 +71,19 @@ function writeQueue(queue: LeadPayload[]): void {
 
 function queueLead(payload: LeadPayload): void {
   writeQueue([...readQueue(QUEUE_KEY), payload]);
+}
+
+/**
+ * Remove one entry identical to `payload` from the *current* storage, so
+ * leads queued while a flush was awaiting the network are kept.
+ */
+function dequeueLead(payload: LeadPayload): void {
+  const target = JSON.stringify(payload);
+  const queue = readQueue(QUEUE_KEY);
+  const index = queue.findIndex((item) => JSON.stringify(item) === target);
+  if (index === -1) return;
+  queue.splice(index, 1);
+  writeQueue(queue);
 }
 
 /** One-time migration of the old queue shape into the Supabase payload. */
@@ -104,47 +132,71 @@ function migrateLegacyQueue(): void {
   }
 }
 
+async function errorCode(response: Response): Promise<string> {
+  try {
+    const body = (await response.json()) as unknown;
+    if (typeof body === "object" && body !== null) {
+      const code = (body as Record<string, unknown>)["error"];
+      if (typeof code === "string") return code;
+    }
+  } catch {
+    // Non-JSON body (gateway / proxy error page): no code.
+  }
+  return "";
+}
+
 async function postLead(payload: LeadPayload): Promise<void> {
   const response = await fetch(LEAD_ENDPOINT, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       Accept: "application/json",
-      apikey: SUPABASE_PUBLISHABLE_KEY,
-      Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
     },
     body: JSON.stringify(payload),
   });
+  if (response.ok) return;
 
-  if (!response.ok) {
-    if (response.status >= 400 && response.status < 500) {
-      throw new PermanentError(`rejected: ${response.status}`);
+  // Only the function's own validation verdict is final. Any other status
+  // (auth, CORS, missing deploy, rate limit, 5xx, unknown codes) can be a
+  // transient or config problem, so the lead must stay queued.
+  const code = await errorCode(response);
+  if (response.status === 400 && isInvalidLeadCode(code)) {
+    throw new InvalidLeadError(code);
+  }
+  throw new Error(`request failed: ${response.status} ${code}`.trim());
+}
+
+async function drainQueue(): Promise<void> {
+  if (!isConfigured()) return;
+  if (typeof navigator !== "undefined" && navigator.onLine === false) return;
+
+  for (const payload of readQueue(QUEUE_KEY)) {
+    try {
+      await postLead(payload);
+    } catch (error) {
+      // Retryable: keep this and every later lead for the next flush.
+      if (!(error instanceof InvalidLeadError)) return;
+      dequeueLead(payload);
+      continue;
     }
-    throw new Error(`request failed: ${response.status}`);
+    dequeueLead(payload);
+    trackEvent("lead_retried", { interest: payload.interest });
   }
 }
 
+let inFlight: Promise<void> | null = null;
+
 /**
  * Re-send leads that were queued while offline or when the POST failed.
- * Only successful posts are removed; retryable failures stay queued.
- * Permanently rejected payloads (4xx) are dropped.
+ * A lead leaves the queue only once the function stored it (2xx) or
+ * rejected it as invalid. Concurrent callers (page load, `online`, after a
+ * submit) share one flush so no lead is posted twice.
  */
-export async function flushQueue(): Promise<void> {
-  if (!isConfigured()) return;
-  if (typeof navigator !== "undefined" && navigator.onLine === false) return;
-  const pending = readQueue(QUEUE_KEY);
-  if (pending.length === 0) return;
-
-  const remaining: LeadPayload[] = [];
-  for (const payload of pending) {
-    try {
-      await postLead(payload);
-      trackEvent("lead_retried", { interest: payload.interest });
-    } catch (error) {
-      if (!(error instanceof PermanentError)) remaining.push(payload);
-    }
-  }
-  writeQueue(remaining);
+export function flushQueue(): Promise<void> {
+  inFlight ??= drainQueue().finally(() => {
+    inFlight = null;
+  });
+  return inFlight;
 }
 
 export function initWaitlist(): void {
@@ -203,9 +255,8 @@ export function initWaitlist(): void {
         // A previous queue may exist; try to drain it now that we are online.
         void flushQueue();
       } catch (error) {
-        if (error instanceof PermanentError) {
-          message.textContent =
-            "入力内容をご確認ください。メールアドレスが正しくない可能性があります。";
+        if (error instanceof InvalidLeadError) {
+          message.textContent = INVALID_LEAD_MESSAGES[error.code];
           return;
         }
         queueLead(payload);

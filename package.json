@@ -5,13 +5,18 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:live": "bash scripts/supabase-ops.sh dev",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "ops": "bash scripts/supabase-ops.sh"
   },
   "devDependencies": {
     "@types/node": "^26.6.2",
+    "happy-dom": "^20.14.5",
     "typescript": "^5.8.0",
-    "vite": "^7.0.0"
+    "vite": "^7.0.0",
+    "vitest": "^5.0.1"
   }
 }

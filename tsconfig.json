@@ -15,5 +15,10 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["src", "vite.config.ts"]
+  "include": [
+    "src",
+    "vite.config.ts",
+    "supabase/functions/genba-lead/handler.ts",
+    "supabase/functions/genba-lead/handler.test.ts"
+  ]
 }
