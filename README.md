@@ -1,6 +1,6 @@
-# GENBA AI
+# KOKODE
 
-Landing page for **GENBA AI**, built with Vite and Vanilla TypeScript.
+Landing page for **KOKODE**, built with Vite and Vanilla TypeScript.
 
 ## Local development
 
@@ -11,7 +11,7 @@ npm run dev:live   # posts to the live genba-lead function (see below)
 npm test           # vitest: form/queue logic + Edge Function handler
 ```
 
-Open `http://localhost:5173/GENBA-AI/` in a browser (the dev server respects the `/GENBA-AI/` base path).
+Open `http://localhost:5173/kokode-ai/` in a browser (the dev server respects the `/kokode-ai/` base path).
 
 ## Production build
 
@@ -31,16 +31,15 @@ Pull requests run the Vite build as a validation check. Pushes to `main` build a
 
 Current Pages base path:
 
-`/GENBA-AI/`
+`/kokode-ai/`
 
 Expected URL:
 
-`https://i-xtsu-sixyou-ken-mei.github.io/GENBA-AI/`
+`https://i-xtsu-sixyou-ken-mei.github.io/kokode-ai/`
 
 ## Brand assets
 
-- `public/logo.webp` — GENBA AI primary logo
-- `public/favicon.svg` — compact GENBA AI mark
+- `public/favicon.svg` — compact KOKODE mark
 
 ## Privacy
 
@@ -78,8 +77,8 @@ browser queue; they are sent automatically once a build with the URL ships.
 
 ## Supabase backend (shared project, isolated namespace)
 
-GENBA AI shares the Zap Pilot Supabase project (owned by zapEngine) but lives
-in its own `genba_ai` schema, which GENBA manages itself -- outside
+KOKODE shares the Zap Pilot Supabase project (owned by zapEngine) but lives
+in its own `genba_ai` schema, which KOKODE manages itself -- outside
 zapEngine's migration pipeline.
 
 - `supabase/migrations/20260922000000_create_genba_ai_leads.sql` -- schema +
@@ -93,9 +92,9 @@ zapEngine's migration pipeline.
 
 ### Infisical projects
 
-| Purpose | Project | Keys GENBA reads |
+| Purpose | Project | Keys KOKODE reads |
 |---|---|---|
-| GENBA's own credentials (repo default, `.infisical.json`) | genba-ai | `SUPABASE_ACCESS_TOKEN` (personal access token) |
+| KOKODE's own credentials (repo default, `.infisical.json`) | genba-ai | `SUPABASE_ACCESS_TOKEN` (personal access token) |
 | Shared Supabase coordinates -- **read only** | Zap Pilot | `SUPABASE_URL` |
 
 `scripts/infisical.sh <genba|zap> -- <cmd>` switches between them
@@ -104,7 +103,7 @@ zapEngine's env loader fails on keys it does not declare.
 
 ### Operations: `npm run ops -- <task>`
 
-`scripts/supabase-ops.sh` is the only way GENBA touches the shared project.
+`scripts/supabase-ops.sh` is the only way KOKODE touches the shared project.
 Secrets are never printed or passed through argv.
 
 | Task | What it does |
@@ -122,8 +121,8 @@ Secrets are never printed or passed through argv.
 
 - **Never** `supabase db push`, `db reset`, `migration repair` or
   `config push` against it. zapEngine's CI `db push`es its own history from
-  `supabase_migrations.schema_migrations`; a GENBA version there breaks its
-  deploys. GENBA SQL goes through `ops sql` and only creates/alters
+  `supabase_migrations.schema_migrations`; a KOKODE version there breaks its
+  deploys. KOKODE SQL goes through `ops sql` and only creates/alters
   `genba_ai.*`.
 - **Never** `functions deploy --prune` or deploy without a function name.
 - `authenticator`'s `pgrst.db_schemas` is pinned in the DB (it overrides the

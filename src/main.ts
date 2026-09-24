@@ -7,7 +7,7 @@ function initInterestLinks(): void {
 
   document.querySelectorAll<HTMLAnchorElement>(".interest-link").forEach((link) => {
     link.addEventListener("click", () => {
-      interest.value = link.dataset.interest || "GENBA Studio";
+      interest.value = link.dataset.interest || "KOKODE Studio";
     });
   });
 }
