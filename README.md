@@ -5,18 +5,18 @@ Landing page for **KOKODE**, built with Vite and Vanilla TypeScript.
 ## Local development
 
 ```bash
-npm install
-npm run dev        # leads queue locally (no endpoint configured)
-npm run dev:live   # posts to the live genba-lead function (see below)
-npm test           # vitest: form/queue logic + Edge Function handler
+pnpm install
+pnpm dev        # leads queue locally (no endpoint configured)
+pnpm dev:live   # posts to the live genba-lead function (see below)
+pnpm test           # vitest: form/queue logic + Edge Function handler
 ```
 
-Open `http://localhost:5173/kokode-ai/` in a browser (the dev server respects the `/kokode-ai/` base path).
+Open `http://localhost:5173/` in a browser.
 
 ## Production build
 
 ```bash
-npm run build
+pnpm build
 ```
 
 The production output is written to `dist/`.
@@ -31,11 +31,11 @@ Pull requests run the Vite build as a validation check. Pushes to `main` build a
 
 Current Pages base path:
 
-`/kokode-ai/`
+`/` (custom domain `www.kokode.xyz`)
 
 Expected URL:
 
-`https://i-xtsu-sixyou-ken-mei.github.io/kokode-ai/`
+`https://www.kokode.xyz/`
 
 ## Brand assets
 
@@ -65,7 +65,7 @@ UTM params + first-touch referrer/landing URL are captured per session
 in `privacy.html` §1.
 
 Production (GitHub Pages) needs one Repository Variable, set with
-`npm run ops -- gh-vars` (or Settings → Secrets and variables → Actions →
+`pnpm ops gh-vars` (or Settings → Secrets and variables → Actions →
 Variables):
 
 - `VITE_SUPABASE_URL` -- the shared project URL (public by design)
@@ -101,7 +101,7 @@ zapEngine's migration pipeline.
 (`INFISICAL_ENV` overrides `prod`). Never write to the Zap Pilot project:
 zapEngine's env loader fails on keys it does not declare.
 
-### Operations: `npm run ops -- <task>`
+### Operations: `pnpm ops <task>`
 
 `scripts/supabase-ops.sh` is the only way KOKODE touches the shared project.
 Secrets are never printed or passed through argv.
@@ -112,7 +112,7 @@ Secrets are never printed or passed through argv.
 | `check` | Read-only report: table, RLS, grants, exposed schemas, migration count; exits 1 if a zapEngine invariant broke |
 | `secrets` | Set `GENBA_LEAD_ALLOWED_ORIGINS` (Pages origin + `localhost:5173`) |
 | `deploy` | Deploy **only** `genba-lead` (`--no-verify-jwt --use-api`, no Docker) |
-| `dev` | Vite dev server against the live function (= `npm run dev:live`); submitted leads go to the **production** table |
+| `dev` | Vite dev server against the live function (= `pnpm dev:live`); submitted leads go to the **production** table |
 | `e2e` | API-level E2E: preflight, keyless POST, invalid email, foreign origin, DB row count |
 | `e2e-cleanup [--yes]` | List, then delete, `e2e+%@example.com` rows |
 | `gh-vars` | Set the `VITE_SUPABASE_URL` Actions variable (value not echoed) |
@@ -136,14 +136,14 @@ Secrets are never printed or passed through argv.
 The endpoint must work before the site points at it -- visitors' queued leads
 are re-sent as soon as a build with `VITE_SUPABASE_URL` ships.
 
-1. `npm run ops -- check` (baseline: note the migration count)
-2. `npm run ops -- sql supabase/migrations/20260922000000_create_genba_ai_leads.sql`
-3. `npm run ops -- sql supabase/migrations/<ts>_expose_genba_ai_schema.sql`
-4. `npm run ops -- check` -- all OK, migration count unchanged
-5. `npm run ops -- secrets` then `npm run ops -- deploy`
-6. `npm run ops -- e2e`
-7. `npm run ops -- gh-vars`, then merge to `main` (Pages deploy)
-8. Verify on the live site, then `npm run ops -- e2e-cleanup`
+1. `pnpm ops check` (baseline: note the migration count)
+2. `pnpm ops sql supabase/migrations/20260922000000_create_genba_ai_leads.sql`
+3. `pnpm ops sql supabase/migrations/<ts>_expose_genba_ai_schema.sql`
+4. `pnpm ops check` -- all OK, migration count unchanged
+5. `pnpm ops secrets` then `pnpm ops deploy`
+6. `pnpm ops e2e`
+7. `pnpm ops gh-vars`, then merge to `main` (Pages deploy)
+8. Verify on the live site, then `pnpm ops e2e-cleanup`
 
 Rollback: `gh variable delete VITE_SUPABASE_URL` + rerun Pages (back to
 queue-only; no lead is lost); `npx supabase@2.117.0 functions delete
