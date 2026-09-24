@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Every GENBA operation against the shared (zapEngine-owned) Supabase project
-# goes through this script:   npm run ops -- <task> [args]
+# goes through this script:   pnpm ops <task> [args]
 #
 #   sql <file>          run an idempotent SQL file via the Management API
 #                       (never records anything in the migration history)
@@ -34,7 +34,9 @@ INFISICAL="$ROOT/scripts/infisical.sh"
 SUPABASE_CLI=(npx --yes supabase@2.117.0)
 MGMT_API="https://api.supabase.com/v1"
 FUNCTION_NAME="genba-lead"
-SITE_ORIGIN="https://i-xtsu-sixyou-ken-mei.github.io"
+SITE_ORIGIN="https://www.kokode.xyz"
+# GENBA_LEAD_ALLOWED_ORIGINS is project-wide; keep the GENBA site allowed.
+EXTRA_ORIGINS="https://i-xtsu-sixyou-ken-mei.github.io"
 DEV_ORIGIN="http://localhost:5173"
 E2E_EMAIL_LIKE='e2e+%@example.com'
 # zapEngine's exposed schemas; they must survive every GENBA change.
@@ -100,7 +102,7 @@ mgmt_query() {
 
 task_sql() {
   local file=${1:-}
-  [[ -n $file && -f $file ]] || die "usage: npm run ops -- sql <file.sql>"
+  [[ -n $file && -f $file ]] || die "usage: pnpm ops sql <file.sql>"
   if grep -qi 'supabase_migrations' "$file"; then
     die "$file references supabase_migrations -- GENBA never touches zapEngine's migration history"
   fi
@@ -176,7 +178,7 @@ task_secrets() {
   load_token
   log "setting GENBA_LEAD_ALLOWED_ORIGINS (function secrets are project-wide)"
   run_with_token "${SUPABASE_CLI[@]}" secrets set \
-    "GENBA_LEAD_ALLOWED_ORIGINS=$SITE_ORIGIN,$DEV_ORIGIN" \
+    "GENBA_LEAD_ALLOWED_ORIGINS=$SITE_ORIGIN,$EXTRA_ORIGINS,$DEV_ORIGIN" \
     --project-ref "$PROJECT_REF"
 }
 
@@ -192,7 +194,7 @@ task_dev() {
   load_project
   log "vite dev against the live genba-lead -- submitted leads go to the PRODUCTION table"
   clean_env
-  exec env -i "${CLEAN_ENV[@]}" "VITE_SUPABASE_URL=$SUPABASE_URL" npm run dev
+  exec env -i "${CLEAN_ENV[@]}" "VITE_SUPABASE_URL=$SUPABASE_URL" pnpm dev
 }
 
 task_gh_vars() {
@@ -276,7 +278,7 @@ task_e2e() {
   expect "valid lead stored exactly once" 1 "$(count_leads "$email")"
   expect "rejected-origin lead not stored" 0 "$(count_leads "$evil_email")"
 
-  echo "cleanup later: npm run ops -- e2e-cleanup"
+  echo "cleanup later: pnpm ops e2e-cleanup"
   [[ $FAILURES -eq 0 ]] || die "$FAILURES e2e check(s) failed"
 }
 

@@ -5,7 +5,7 @@ import { defineConfig } from "vite";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
-  base: "/kokode-ai/",
+  base: "/",
   build: {
     outDir: "dist",
     emptyOutDir: true,
