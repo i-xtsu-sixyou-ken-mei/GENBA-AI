@@ -22,6 +22,7 @@ interface LeadPayload {
 
 // Keep the legacy storage key so leads queued by older KOKODE builds survive the rename.
 const QUEUE_KEY = "genba-ai-lead-queue-v2";
+const SUBMITTED_KEY = "kokode-lead-submitted-v1";
 // Previous Basin/Formspree-era queue (different shape) -- migrated once.
 const LEGACY_QUEUE_KEY = "genba-ai-waitlist-queue";
 
@@ -72,6 +73,22 @@ function writeQueue(queue: LeadPayload[]): void {
 
 function queueLead(payload: LeadPayload): void {
   writeQueue([...readQueue(QUEUE_KEY), payload]);
+}
+
+function hasSubmitted(): boolean {
+  try {
+    return localStorage.getItem(SUBMITTED_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function markSubmitted(): void {
+  try {
+    localStorage.setItem(SUBMITTED_KEY, "1");
+  } catch {
+    // Persistence is best-effort; the current page still stays locked.
+  }
 }
 
 /**
@@ -181,6 +198,7 @@ async function drainQueue(): Promise<void> {
       continue;
     }
     dequeueLead(payload);
+    markSubmitted();
     trackEvent("lead_retried", { interest: payload.interest });
   }
 }
@@ -213,31 +231,52 @@ export function initWaitlist(): void {
   const nameInput = document.querySelector<HTMLInputElement>("#contact-name");
   const idleSubmitLabel = submitButton?.textContent ?? "案内を受け取る";
   let submitting = false;
+  let submitted = hasSubmitted();
+
+  const renderSubmitState = (): void => {
+    if (!submitButton) return;
+    submitButton.classList.toggle("is-loading", submitting);
+    submitButton.disabled = submitting || submitted;
+    if (submitting) {
+      submitButton.setAttribute("aria-busy", "true");
+      submitButton.textContent = "送信中…";
+      return;
+    }
+    submitButton.removeAttribute("aria-busy");
+    submitButton.textContent = submitted ? "登録済み" : idleSubmitLabel;
+  };
 
   const setSubmitting = (active: boolean): void => {
     submitting = active;
-    if (!submitButton) return;
-    submitButton.disabled = active;
-    submitButton.classList.toggle("is-loading", active);
-    if (active) {
-      submitButton.setAttribute("aria-busy", "true");
-      submitButton.textContent = "送信中…";
-    } else {
-      submitButton.removeAttribute("aria-busy");
-      submitButton.textContent = idleSubmitLabel;
-    }
+    renderSubmitState();
   };
+
+  const setSubmitted = (): void => {
+    submitted = true;
+    markSubmitted();
+    renderSubmitState();
+  };
+
+  renderSubmitState();
+  if (submitted) {
+    message.textContent = "登録済みです。ご案内をお待ちください。";
+  }
 
   // Best-effort: migrate the old queue, then re-send previous visits.
   migrateLegacyQueue();
-  void flushQueue();
+  void flushQueue().finally(() => {
+    if (hasSubmitted()) {
+      submitted = true;
+      renderSubmitState();
+    }
+  });
   window.addEventListener("online", () => {
     void flushQueue();
   });
 
   form.addEventListener("submit", (event) => {
     event.preventDefault();
-    if (submitting) return;
+    if (submitting || submitted) return;
 
     const email = emailInput.value.trim();
     if (!email) return;
@@ -271,6 +310,7 @@ export function initWaitlist(): void {
       try {
         await postLead(payload);
         form.reset();
+        setSubmitted();
         message.textContent = "登録しました。ご案内をお送りします。";
         trackEvent("lead_submitted", { interest: payload.interest });
         // A previous queue may exist; try to drain it now that we are online.

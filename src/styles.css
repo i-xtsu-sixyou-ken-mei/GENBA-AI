@@ -47,7 +47,8 @@
     }
     .nav-cta{min-height:36px;padding:0 16px;font-size:13px}
     .nav-cta:hover,.btn:not(:disabled):hover{background:var(--blue-hover);transform:translateY(-1px)}
-    .btn:disabled{cursor:wait;opacity:.78;transform:none}
+    .btn:disabled{cursor:not-allowed;opacity:.78;transform:none}
+    .email-form button.is-loading{cursor:wait}
     .email-form button.is-loading::before{
       content:"";width:15px;height:15px;flex:0 0 15px;margin-right:8px;border-radius:50%;
       border:2px solid rgba(255,255,255,.45);border-top-color:#fff;
