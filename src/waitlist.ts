@@ -20,6 +20,7 @@ interface LeadPayload {
   page_url: string;
 }
 
+// Keep the legacy storage key so leads queued by older KOKODE builds survive the rename.
 const QUEUE_KEY = "genba-ai-lead-queue-v2";
 // Previous Basin/Formspree-era queue (different shape) -- migrated once.
 const LEGACY_QUEUE_KEY = "genba-ai-waitlist-queue";
