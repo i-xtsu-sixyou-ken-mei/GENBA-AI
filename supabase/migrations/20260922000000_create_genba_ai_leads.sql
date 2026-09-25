@@ -1,4 +1,4 @@
--- GENBA AI lead capture: isolated namespace sharing the Zap Pilot project.
+-- KOKODE lead capture: isolated namespace sharing the Zap Pilot project.
 --
 -- Idempotent; apply with:
 --   npm run ops -- sql supabase/migrations/20260922000000_create_genba_ai_leads.sql
@@ -19,7 +19,7 @@ create table if not exists genba_ai.leads (
   organization text,
   interest text not null,
 
-  source text not null default 'genba-ai-website',
+  source text not null default 'kokode-website',
 
   utm_source text,
   utm_medium text,

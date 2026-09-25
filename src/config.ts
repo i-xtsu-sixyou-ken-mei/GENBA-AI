@@ -18,4 +18,4 @@ export const LEAD_ENDPOINT: string = SUPABASE_URL
 export const SALES_EMAIL: string = import.meta.env.VITE_SALES_EMAIL ?? "";
 export const SUPPORT_EMAIL: string = import.meta.env.VITE_SUPPORT_EMAIL ?? "";
 
-export const LEAD_SOURCE = "genba-ai-website";
+export const LEAD_SOURCE = "kokode-website";

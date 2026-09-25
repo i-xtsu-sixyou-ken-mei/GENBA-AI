@@ -1,4 +1,4 @@
-name: Build and deploy Vite site
+name: Build and deploy KOKODE
 
 on:
   push:
@@ -10,7 +10,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: "pages-${{ github.ref }}"
+  group: "deploy-${{ github.ref }}"
   cancel-in-progress: true
 
 jobs:
@@ -32,14 +32,16 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Validate shell scripts
+        run: bash -n scripts/infisical.sh scripts/supabase-ops.sh
+
       - name: Test
         run: pnpm test
 
       - name: Build
         run: pnpm build
         env:
-          # Public-by-design values (embedded into the JS bundle).
-          # Never put secrets here. Set via GitHub Repository Variables.
+          # Public-by-design values embedded into the browser bundle.
           VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
           VITE_SALES_EMAIL: ${{ vars.VITE_SALES_EMAIL }}
           VITE_SUPPORT_EMAIL: ${{ vars.VITE_SUPPORT_EMAIL }}
@@ -51,9 +53,122 @@ jobs:
         with:
           path: dist
 
+  backend-auth:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      INFISICAL_UNIVERSAL_AUTH_CLIENT_ID: ${{ secrets.INFISICAL_UNIVERSAL_AUTH_CLIENT_ID }}
+      INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET: ${{ secrets.INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate backend credential source
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -n "${SUPABASE_ACCESS_TOKEN:-}" ]; then
+            [[ "$SUPABASE_ACCESS_TOKEN" == sbp_* ]] || {
+              echo "::error::SUPABASE_ACCESS_TOKEN does not look like a Supabase personal access token"
+              exit 1
+            }
+            echo "Direct Supabase GitHub Secret is configured"
+            exit 0
+          fi
+
+          if [ -z "${INFISICAL_UNIVERSAL_AUTH_CLIENT_ID:-}" ] || \
+             [ -z "${INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET:-}" ]; then
+            echo "::error::Configure either SUPABASE_ACCESS_TOKEN or both Infisical Universal Auth secrets"
+            exit 1
+          fi
+
+          npm install --global @infisical/cli@0.43.125
+          token="$(infisical login --method=universal-auth --silent --plain)"
+          echo "::add-mask::$token"
+          export INFISICAL_TOKEN="$token"
+          scripts/infisical.sh kokode -- sh -c '
+            case "${SUPABASE_ACCESS_TOKEN:-}" in
+              sbp_*) exit 0 ;;
+              *) echo "SUPABASE_ACCESS_TOKEN is missing or invalid in KOKODE Infisical" >&2; exit 1 ;;
+            esac
+          '
+          echo "Infisical machine identity can read KOKODE SUPABASE_ACCESS_TOKEN"
+
+  backend:
+    if: github.event_name != 'pull_request'
+    needs: [build, backend-auth]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      # URL is public and already used by the Vite build. The access token is
+      # either a direct GitHub secret or loaded from KOKODE's Infisical project.
+      SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      INFISICAL_UNIVERSAL_AUTH_CLIENT_ID: ${{ secrets.INFISICAL_UNIVERSAL_AUTH_CLIENT_ID }}
+      INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET: ${{ secrets.INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Prepare backend credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "${SUPABASE_URL:-}" ]; then
+            echo "::error::Repository variable VITE_SUPABASE_URL is not configured"
+            exit 1
+          fi
+
+          if [ -n "${SUPABASE_ACCESS_TOKEN:-}" ]; then
+            echo "Using SUPABASE_ACCESS_TOKEN from GitHub Secrets"
+            exit 0
+          fi
+
+          if [ -z "${INFISICAL_UNIVERSAL_AUTH_CLIENT_ID:-}" ] || \
+             [ -z "${INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET:-}" ]; then
+            echo "::error::Configure either SUPABASE_ACCESS_TOKEN or the two Infisical Universal Auth secrets"
+            exit 1
+          fi
+
+          npm install --global @infisical/cli@0.43.125
+          token="$(infisical login --method=universal-auth --silent --plain)"
+          echo "::add-mask::$token"
+          echo "INFISICAL_TOKEN=$token" >> "$GITHUB_ENV"
+
+      - name: Apply KOKODE SQL
+        run: pnpm ops apply
+
+      - name: Verify database invariants
+        run: pnpm ops check --strict
+
+      - name: Reconcile Edge Function secrets
+        run: pnpm ops secrets
+
+      - name: Deploy genba-lead
+        run: pnpm ops deploy
+
+      - name: Production E2E
+        run: pnpm ops e2e
+
+      - name: Clean E2E rows
+        run: pnpm ops e2e-cleanup --yes
+
   deploy:
     if: github.event_name != 'pull_request'
-    needs: build
+    needs: [build, backend]
     runs-on: ubuntu-latest
     permissions:
       pages: write

@@ -25,10 +25,10 @@ const windowListeners: Array<[string, EventListenerOrEventListenerObject]> =
 function lead(email: string): Record<string, string> {
   return {
     email,
-    interest: "GENBA Studio",
+    interest: "KOKODE Studio",
     organization: "",
     name: "",
-    source: "genba-ai-website",
+    source: "kokode-website",
     utm_source: "",
     utm_medium: "",
     utm_campaign: "",
@@ -71,8 +71,8 @@ function seedQueue(items: Array<Record<string, string>>): void {
 function mountForm(): void {
   document.body.innerHTML = `
     <select id="interest">
-      <option>GENBA Studio</option>
-      <option>GENBA Rack</option>
+      <option>KOKODE Studio</option>
+      <option>KOKODE Rack</option>
     </select>
     <form id="waitlist-form">
       <input id="organization" />
@@ -144,8 +144,8 @@ describe("form submission", () => {
     expect(headers.has("authorization")).toBe(false);
     expect(JSON.parse(String(init?.body))).toMatchObject({
       email: "user@example.com",
-      interest: "GENBA Studio",
-      source: "genba-ai-website",
+      interest: "KOKODE Studio",
+      source: "kokode-website",
     });
     expect(readStoredQueue()).toEqual([]);
   });

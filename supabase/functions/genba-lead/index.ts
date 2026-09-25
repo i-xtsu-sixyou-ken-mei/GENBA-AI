@@ -1,4 +1,4 @@
-// genba-lead: public lead-capture endpoint for the GENBA AI website.
+// genba-lead: public lead-capture endpoint for the KOKODE website.
 //
 // Browser flow (no key at all -- the function is public):
 //   POST https://<project>.supabase.co/functions/v1/genba-lead
@@ -18,8 +18,8 @@
 // request (this shared project has no publishable key -> 500) and forces
 // `Access-Control-Allow-Origin: *`.
 //
-// GENBA_LEAD_ALLOWED_ORIGINS: comma-separated origins (function secrets are
-// project-wide and shared with zapEngine, hence the prefix). Unset = any.
+// KOKODE_LEAD_ALLOWED_ORIGINS: comma-separated origins (function secrets are
+// project-wide and shared with zapEngine, hence the project-specific prefix). Unset = any.
 //
 // Deploy: `npm run ops -- deploy` (see scripts/supabase-ops.sh).
 
@@ -27,7 +27,7 @@ import { createAdminClient } from "npm:@supabase/server@1.8.0/core";
 import { handleLead, parseAllowedOrigins } from "./handler.ts";
 
 const allowedOrigins = parseAllowedOrigins(
-  Deno.env.get("GENBA_LEAD_ALLOWED_ORIGINS"),
+  Deno.env.get("KOKODE_LEAD_ALLOWED_ORIGINS"),
 );
 
 Deno.serve((req) =>
