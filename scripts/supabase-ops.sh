@@ -2,9 +2,10 @@
 # Every GENBA operation against the shared (zapEngine-owned) Supabase project
 # goes through this script:   pnpm ops <task> [args]
 #
-#   sql <file>          run an idempotent SQL file via the Management API
+#   sql <file>          run one idempotent SQL file via the Management API
 #                       (never records anything in the migration history)
-#   check               read-only report; exits 1 if a zapEngine invariant broke
+#   apply               run every supabase/migrations/*.sql file in order
+#   check [--strict]    read-only report; --strict also requires KOKODE ready
 #   secrets             set GENBA_LEAD_ALLOWED_ORIGINS (project-wide secret)
 #   deploy              deploy ONLY genba-lead (server-side bundle, no Docker)
 #   dev                 vite dev server against the live function -- leads
@@ -42,6 +43,12 @@ E2E_EMAIL_LIKE='e2e+%@example.com'
 # zapEngine's exposed schemas; they must survive every GENBA change.
 ZAP_SCHEMAS='["public","graphql_public","review_web","from_fed_to_chain"]'
 
+# CI may inject the public project URL and/or access token. Capture them, then
+# remove the exported originals so child processes never inherit the token.
+INJECTED_SUPABASE_URL="${SUPABASE_URL:-}"
+INJECTED_SUPABASE_ACCESS_TOKEN="${SUPABASE_ACCESS_TOKEN:-}"
+unset SUPABASE_URL SUPABASE_ACCESS_TOKEN
+
 SUPABASE_URL=""
 PROJECT_REF=""
 SUPABASE_ACCESS_TOKEN=""
@@ -55,8 +62,12 @@ log() { echo "==> $*" >&2; }
 
 load_project() {
   local url
-  url=$("$INFISICAL" zap -- printenv SUPABASE_URL) ||
-    die "cannot read SUPABASE_URL from the Zap Pilot Infisical project (prod /)"
+  if [[ -n $INJECTED_SUPABASE_URL ]]; then
+    url=$INJECTED_SUPABASE_URL
+  else
+    url=$("$INFISICAL" zap -- printenv SUPABASE_URL) ||
+      die "cannot read SUPABASE_URL from the Zap Pilot Infisical project (prod /)"
+  fi
   [[ $url =~ ^https://([a-z0-9]{20})\.supabase\.co/?$ ]] ||
     die "SUPABASE_URL is not of the form https://<20-char ref>.supabase.co"
   PROJECT_REF=${BASH_REMATCH[1]}
@@ -64,8 +75,12 @@ load_project() {
 }
 
 load_token() {
-  SUPABASE_ACCESS_TOKEN=$("$INFISICAL" genba -- printenv SUPABASE_ACCESS_TOKEN) ||
-    die "cannot read SUPABASE_ACCESS_TOKEN from the genba-ai Infisical project (prod /)"
+  if [[ -n $INJECTED_SUPABASE_ACCESS_TOKEN ]]; then
+    SUPABASE_ACCESS_TOKEN=$INJECTED_SUPABASE_ACCESS_TOKEN
+  else
+    SUPABASE_ACCESS_TOKEN=$("$INFISICAL" genba -- printenv SUPABASE_ACCESS_TOKEN) ||
+      die "cannot read SUPABASE_ACCESS_TOKEN from the genba-ai Infisical project (prod /)"
+  fi
   [[ $SUPABASE_ACCESS_TOKEN == sbp_* ]] ||
     die "SUPABASE_ACCESS_TOKEN does not look like a personal access token (sbp_...)"
 }
@@ -112,6 +127,17 @@ task_sql() {
   mgmt_query "$(cat "$file")" false | jq .
 }
 
+task_apply() {
+  local file
+  shopt -s nullglob
+  local files=("$ROOT"/supabase/migrations/*.sql)
+  shopt -u nullglob
+  [[ ${#files[@]} -gt 0 ]] || die "no supabase/migrations/*.sql files found"
+  for file in "${files[@]}"; do
+    task_sql "$file"
+  done
+}
+
 read -r -d '' CHECK_SQL <<'SQL' || true
 with leads as (select to_regclass('genba_ai.leads') as oid),
 ns as (select oid from pg_namespace where nspname = 'genba_ai'),
@@ -146,6 +172,7 @@ select
 SQL
 
 task_check() {
+  local strict=${1:-}
   load_project
   load_token
   local report
@@ -171,6 +198,19 @@ task_check() {
     (.pgrst_db_schemas // "" | split(",") | map(gsub("^\\s+|\\s+$"; ""))) as $exposed
     | ($zap - $exposed | length) == 0 and (.genba_versions_in_history | tonumber) == 0
   ' <<<"$report" >/dev/null || die "a zapEngine invariant is broken -- stop and investigate"
+
+  if [[ $strict == --strict ]]; then
+    jq -e '
+      (.pgrst_db_schemas // "" | split(",") | map(gsub("^\\s+|\\s+$"; ""))) as $exposed
+      | .leads_table_exists
+        and .leads_rls_enabled
+        and (.anon_has_access | not)
+        and (.authenticated_has_access | not)
+        and .service_role_can_insert
+        and (($exposed | index("genba_ai")) != null)
+    ' <<<"$report" >/dev/null ||
+      die "KOKODE backend is not fully provisioned"
+  fi
 }
 
 task_secrets() {
@@ -308,7 +348,8 @@ task=${1:-}
 shift || true
 case "$task" in
   sql) task_sql "$@" ;;
-  check) task_check ;;
+  apply) task_apply ;;
+  check) task_check "$@" ;;
   secrets) task_secrets ;;
   deploy) task_deploy ;;
   dev) task_dev ;;
