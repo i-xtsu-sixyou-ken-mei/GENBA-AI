@@ -1,4 +1,4 @@
--- Expose `genba_ai` to PostgREST so the genba-lead Edge Function can insert
+-- Expose legacy schema `genba_ai` to PostgREST so KOKODE's `genba-lead` Edge Function can insert
 -- via the Data API. Idempotent; apply with:
 --   npm run ops -- sql supabase/migrations/20260923021804_expose_genba_ai_schema.sql
 -- (Management API -- never `supabase db push`: the shared project's
