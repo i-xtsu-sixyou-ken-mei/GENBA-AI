@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# Every GENBA operation against the shared (zapEngine-owned) Supabase project
+# Every KOKODE operation against the shared (zapEngine-owned) Supabase project
 # goes through this script:   pnpm ops <task> [args]
 #
 #   sql <file>          run one idempotent SQL file via the Management API
 #                       (never records anything in the migration history)
 #   apply               run every supabase/migrations/*.sql file in order
 #   check [--strict]    read-only report; --strict also requires KOKODE ready
-#   secrets             set GENBA_LEAD_ALLOWED_ORIGINS (project-wide secret)
+#   secrets             set KOKODE_LEAD_ALLOWED_ORIGINS (project-wide secret)
 #   deploy              deploy ONLY genba-lead (server-side bundle, no Docker)
 #   dev                 vite dev server against the live function -- leads
 #                       you submit are written to the PRODUCTION table
@@ -16,7 +16,7 @@
 #
 # NEVER run against the shared project (each one breaks zapEngine):
 #   - supabase db push / db reset / migration repair / migration up:
-#     zapEngine's CI `db push`es its own history, and any GENBA version in
+#     zapEngine's CI `db push`es its own history, and any KOKODE version in
 #     supabase_migrations.schema_migrations breaks its deploys.
 #   - supabase config push: overwrites project-wide auth / API settings.
 #   - supabase functions deploy --prune, or deploy without a function name:
@@ -36,11 +36,11 @@ SUPABASE_CLI=(npx --yes supabase@2.117.0)
 MGMT_API="https://api.supabase.com/v1"
 FUNCTION_NAME="genba-lead"
 SITE_ORIGIN="https://www.kokode.xyz"
-# GENBA_LEAD_ALLOWED_ORIGINS is project-wide; keep the GENBA site allowed.
+# KOKODE_LEAD_ALLOWED_ORIGINS is project-wide; keep the KOKODE site allowed.
 EXTRA_ORIGINS="https://i-xtsu-sixyou-ken-mei.github.io"
 DEV_ORIGIN="http://localhost:5173"
 E2E_EMAIL_LIKE='e2e+%@example.com'
-# zapEngine's exposed schemas; they must survive every GENBA change.
+# zapEngine's exposed schemas; they must survive every KOKODE change.
 ZAP_SCHEMAS='["public","graphql_public","review_web","from_fed_to_chain"]'
 
 # CI may inject the public project URL and/or access token. Capture them, then
@@ -78,8 +78,8 @@ load_token() {
   if [[ -n $INJECTED_SUPABASE_ACCESS_TOKEN ]]; then
     SUPABASE_ACCESS_TOKEN=$INJECTED_SUPABASE_ACCESS_TOKEN
   else
-    SUPABASE_ACCESS_TOKEN=$("$INFISICAL" genba -- printenv SUPABASE_ACCESS_TOKEN) ||
-      die "cannot read SUPABASE_ACCESS_TOKEN from the genba-ai Infisical project (prod /)"
+    SUPABASE_ACCESS_TOKEN=$("$INFISICAL" kokode -- printenv SUPABASE_ACCESS_TOKEN) ||
+      die "cannot read SUPABASE_ACCESS_TOKEN from the kokode-ai Infisical project (prod /)"
   fi
   [[ $SUPABASE_ACCESS_TOKEN == sbp_* ]] ||
     die "SUPABASE_ACCESS_TOKEN does not look like a personal access token (sbp_...)"
@@ -119,7 +119,7 @@ task_sql() {
   local file=${1:-}
   [[ -n $file && -f $file ]] || die "usage: pnpm ops sql <file.sql>"
   if grep -qi 'supabase_migrations' "$file"; then
-    die "$file references supabase_migrations -- GENBA never touches zapEngine's migration history"
+    die "$file references supabase_migrations -- KOKODE never touches zapEngine's migration history"
   fi
   load_project
   load_token
@@ -168,7 +168,7 @@ select
   (select schemas from pgrst) as pgrst_db_schemas,
   (select count(*) from supabase_migrations.schema_migrations) as schema_migrations_count,
   (select count(*) from supabase_migrations.schema_migrations
-   where version in ('20260922000000', '20260923021804')) as genba_versions_in_history
+   where version in ('20260922000000', '20260923021804')) as kokode_versions_in_history
 SQL
 
 task_check() {
@@ -183,8 +183,8 @@ task_check() {
     | [
         ["invariant", "zapEngine schemas still exposed \($zap | join(","))",
           ($zap - $exposed | length) == 0],
-        ["invariant", "no GENBA version in the migration history",
-          (.genba_versions_in_history | tonumber) == 0],
+        ["invariant", "no KOKODE version in the migration history",
+          (.kokode_versions_in_history | tonumber) == 0],
         ["genba", "genba_ai.leads exists", .leads_table_exists],
         ["genba", "RLS enabled on genba_ai.leads", .leads_rls_enabled],
         ["genba", "anon has no access", (.anon_has_access | not)],
@@ -196,7 +196,7 @@ task_check() {
   ' <<<"$report"
   jq -e --argjson zap "$ZAP_SCHEMAS" '
     (.pgrst_db_schemas // "" | split(",") | map(gsub("^\\s+|\\s+$"; ""))) as $exposed
-    | ($zap - $exposed | length) == 0 and (.genba_versions_in_history | tonumber) == 0
+    | ($zap - $exposed | length) == 0 and (.kokode_versions_in_history | tonumber) == 0
   ' <<<"$report" >/dev/null || die "a zapEngine invariant is broken -- stop and investigate"
 
   if [[ $strict == --strict ]]; then
@@ -216,9 +216,9 @@ task_check() {
 task_secrets() {
   load_project
   load_token
-  log "setting GENBA_LEAD_ALLOWED_ORIGINS (function secrets are project-wide)"
+  log "setting KOKODE_LEAD_ALLOWED_ORIGINS (function secrets are project-wide)"
   run_with_token "${SUPABASE_CLI[@]}" secrets set \
-    "GENBA_LEAD_ALLOWED_ORIGINS=$SITE_ORIGIN,$EXTRA_ORIGINS,$DEV_ORIGIN" \
+    "KOKODE_LEAD_ALLOWED_ORIGINS=$SITE_ORIGIN,$EXTRA_ORIGINS,$DEV_ORIGIN" \
     --project-ref "$PROJECT_REF"
 }
 
@@ -278,8 +278,8 @@ call_fn() {
 
 lead_json() {
   jq -n --arg email "$1" '{
-    email: $email, interest: "GENBA Studio", organization: "", name: "e2e",
-    source: "genba-ai-website", utm_source: "e2e", utm_medium: "",
+    email: $email, interest: "KOKODE Studio", organization: "", name: "e2e",
+    source: "kokode-website", utm_source: "e2e", utm_medium: "",
     utm_campaign: "", utm_term: "", utm_content: "", referrer: "",
     landing_url: "", page_url: ""
   }'
