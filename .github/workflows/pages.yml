@@ -32,6 +32,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Validate shell scripts
+        run: bash -n scripts/infisical.sh scripts/supabase-ops.sh
+
       - name: Test
         run: pnpm test
 
