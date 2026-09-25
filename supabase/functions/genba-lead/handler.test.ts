@@ -40,18 +40,18 @@ function preflight(origin: string | null = SITE): Request {
 
 const validLead = {
   email: "user@example.com",
-  interest: "GENBA Studio",
+  interest: "KOKODE Studio",
   organization: "現場病院",
   name: "山田",
-  source: "genba-ai-website",
+  source: "kokode-website",
   utm_source: "x",
   utm_medium: "",
   utm_campaign: "",
   utm_term: "",
   utm_content: "",
   referrer: "",
-  landing_url: "https://i-xtsu-sixyou-ken-mei.github.io/GENBA-AI/",
-  page_url: "https://i-xtsu-sixyou-ken-mei.github.io/GENBA-AI/#contact",
+  landing_url: "https://i-xtsu-sixyou-ken-mei.github.io/kokode-ai/",
+  page_url: "https://i-xtsu-sixyou-ken-mei.github.io/kokode-ai/#contact",
 };
 
 async function expectError(
@@ -208,15 +208,15 @@ describe("insert", () => {
       email: "user@example.com",
       name: "山田",
       organization: "現場病院",
-      interest: "GENBA Studio",
-      source: "genba-ai-website",
+      interest: "KOKODE Studio",
+      source: "kokode-website",
       utm_source: "x",
       utm_medium: null,
       utm_campaign: null,
       utm_term: null,
       utm_content: null,
       referrer: null,
-      landing_url: "https://i-xtsu-sixyou-ken-mei.github.io/GENBA-AI/",
+      landing_url: "https://i-xtsu-sixyou-ken-mei.github.io/kokode-ai/",
     } satisfies LeadRow);
   });
 
@@ -241,7 +241,7 @@ describe("insert", () => {
     expect(row.interest).toBe("i".repeat(120));
     expect(row.name).toBe("n".repeat(200));
     expect(row.organization).toBeNull();
-    expect(row.source).toBe("genba-ai-website");
+    expect(row.source).toBe("kokode-website");
     expect(row.utm_source).toBe("u".repeat(500));
     expect(row.referrer).toBeNull();
     expect(row).not.toHaveProperty("page_url");
