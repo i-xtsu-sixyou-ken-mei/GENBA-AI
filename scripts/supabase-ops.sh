@@ -7,7 +7,7 @@
 #   apply               run every supabase/migrations/*.sql file in order
 #   check [--strict]    read-only report; --strict also requires KOKODE ready
 #   secrets             set KOKODE_LEAD_ALLOWED_ORIGINS (project-wide secret)
-#   deploy              deploy ONLY genba-lead (server-side bundle, no Docker)
+#   deploy              deploy ONLY legacy `genba-lead` (server-side bundle, no Docker)
 #   dev                 vite dev server against the live function -- leads
 #                       you submit are written to the PRODUCTION table
 #   e2e                 API-level end-to-end test of the deployed function
@@ -185,12 +185,12 @@ task_check() {
           ($zap - $exposed | length) == 0],
         ["invariant", "no KOKODE version in the migration history",
           (.kokode_versions_in_history | tonumber) == 0],
-        ["genba", "genba_ai.leads exists", .leads_table_exists],
-        ["genba", "RLS enabled on genba_ai.leads", .leads_rls_enabled],
-        ["genba", "anon has no access", (.anon_has_access | not)],
-        ["genba", "authenticated has no access", (.authenticated_has_access | not)],
-        ["genba", "service_role can insert", .service_role_can_insert],
-        ["genba", "genba_ai in pgrst.db_schemas", ($exposed | index("genba_ai")) != null]
+        ["kokode", "genba_ai.leads exists", .leads_table_exists],
+        ["kokode", "RLS enabled on genba_ai.leads", .leads_rls_enabled],
+        ["kokode", "anon has no access", (.anon_has_access | not)],
+        ["kokode", "authenticated has no access", (.authenticated_has_access | not)],
+        ["kokode", "service_role can insert", .service_role_can_insert],
+        ["kokode", "genba_ai in pgrst.db_schemas", ($exposed | index("genba_ai")) != null]
       ][]
     | "\(if .[2] then "OK" else "NG" end)  [\(.[0])] \(.[1])"
   ' <<<"$report"
@@ -232,7 +232,7 @@ task_deploy() {
 
 task_dev() {
   load_project
-  log "vite dev against the live genba-lead -- submitted leads go to the PRODUCTION table"
+  log "vite dev against the live legacy `genba-lead` -- submitted leads go to the PRODUCTION table"
   clean_env
   exec env -i "${CLEAN_ENV[@]}" "VITE_SUPABASE_URL=$SUPABASE_URL" pnpm dev
 }
