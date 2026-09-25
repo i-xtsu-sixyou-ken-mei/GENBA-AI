@@ -53,9 +53,51 @@ jobs:
         with:
           path: dist
 
+  backend-auth:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      INFISICAL_UNIVERSAL_AUTH_CLIENT_ID: ${{ secrets.INFISICAL_UNIVERSAL_AUTH_CLIENT_ID }}
+      INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET: ${{ secrets.INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate backend credential source
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -n "${SUPABASE_ACCESS_TOKEN:-}" ]; then
+            [[ "$SUPABASE_ACCESS_TOKEN" == sbp_* ]] || {
+              echo "::error::SUPABASE_ACCESS_TOKEN does not look like a Supabase personal access token"
+              exit 1
+            }
+            echo "Direct Supabase GitHub Secret is configured"
+            exit 0
+          fi
+
+          if [ -z "${INFISICAL_UNIVERSAL_AUTH_CLIENT_ID:-}" ] || \
+             [ -z "${INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET:-}" ]; then
+            echo "::error::Configure either SUPABASE_ACCESS_TOKEN or both Infisical Universal Auth secrets"
+            exit 1
+          fi
+
+          npm install --global @infisical/cli@0.43.125
+          token="$(infisical login --method=universal-auth --silent --plain)"
+          echo "::add-mask::$token"
+          export INFISICAL_TOKEN="$token"
+          scripts/infisical.sh kokode -- sh -c '
+            case "${SUPABASE_ACCESS_TOKEN:-}" in
+              sbp_*) exit 0 ;;
+              *) echo "SUPABASE_ACCESS_TOKEN is missing or invalid in KOKODE Infisical" >&2; exit 1 ;;
+            esac
+          '
+          echo "Infisical machine identity can read KOKODE SUPABASE_ACCESS_TOKEN"
+
   backend:
     if: github.event_name != 'pull_request'
-    needs: build
+    needs: [build, backend-auth]
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
