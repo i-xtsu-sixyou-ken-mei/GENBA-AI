@@ -1,7 +1,7 @@
 // Pure request handler for `genba-lead` -- no Deno / npm imports, so the
 // same code runs in the Edge runtime (index.ts) and under vitest on Node.
 
-/** Row inserted into `genba_ai.leads`; every other column is DB-defaulted. */
+/** Row inserted into `kokode_ai.leads`; every other column is DB-defaulted. */
 export interface LeadRow {
   email: string;
   name: string | null;
