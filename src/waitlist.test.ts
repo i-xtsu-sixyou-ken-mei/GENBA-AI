@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const SUPABASE_URL = "https://example-ref.supabase.co";
 const ENDPOINT = `${SUPABASE_URL}/functions/v1/genba-lead`;
 const QUEUE_KEY = "genba-ai-lead-queue-v2";
+const SUBMITTED_KEY = "kokode-lead-submitted-v1";
 
 const MSG_SUCCESS = "登録しました。ご案内をお送りします。";
 const MSG_INVALID_EMAIL =
@@ -148,6 +149,11 @@ describe("form submission", () => {
       source: "kokode-website",
     });
     expect(readStoredQueue()).toEqual([]);
+    expect(localStorage.getItem(SUBMITTED_KEY)).toBe("1");
+    const button =
+      document.querySelector<HTMLButtonElement>('#waitlist-form button[type="submit"]');
+    expect(button?.disabled).toBe(true);
+    expect(button?.textContent).toBe("登録済み");
   });
 
   it("locks the submit button and ignores repeated submits while in flight", async () => {
@@ -172,10 +178,28 @@ describe("form submission", () => {
     response.resolve(jsonResponse(201, { ok: true }));
     await vi.waitFor(() => expect(message()).toBe(MSG_SUCCESS));
 
-    expect(button?.disabled).toBe(false);
+    expect(button?.disabled).toBe(true);
     expect(button?.classList.contains("is-loading")).toBe(false);
     expect(button?.hasAttribute("aria-busy")).toBe(false);
-    expect(button?.textContent).toBe("送信");
+    expect(button?.textContent).toBe("登録済み");
+    expect(localStorage.getItem(SUBMITTED_KEY)).toBe("1");
+  });
+
+  it("restores the submitted state after reload and blocks another post", async () => {
+    localStorage.setItem(SUBMITTED_KEY, "1");
+    const { initWaitlist } = await load();
+    initWaitlist();
+
+    const button =
+      document.querySelector<HTMLButtonElement>('#waitlist-form button[type="submit"]');
+    expect(button?.disabled).toBe(true);
+    expect(button?.textContent).toBe("登録済み");
+    expect(message()).toBe("登録済みです。ご案内をお待ちください。");
+
+    submit("again@example.com");
+
+    await Promise.resolve();
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it.each([
@@ -224,6 +248,7 @@ describe("form submission", () => {
     const queued = readStoredQueue();
     expect(queued).toHaveLength(1);
     expect(queued[0]).toMatchObject({ email: "user@example.com" });
+    expect(localStorage.getItem(SUBMITTED_KEY)).toBeNull();
   });
 
   it("queues without fetching while the endpoint is not configured", async () => {
@@ -248,6 +273,7 @@ describe("flushQueue", () => {
 
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(readStoredQueue()).toEqual([]);
+    expect(localStorage.getItem(SUBMITTED_KEY)).toBe("1");
   });
 
   it("stops at the first retryable failure and keeps the queue", async () => {
