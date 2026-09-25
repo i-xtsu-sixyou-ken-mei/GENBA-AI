@@ -50,7 +50,8 @@ The site includes `privacy.html` and links to it from the lead form and footer.
 ## Waitlist form
 
 `src/waitlist.ts` posts leads as JSON to the Supabase Edge Function
-`genba-lead` (`src/config.ts`, derived from `VITE_SUPABASE_URL`). The
+`genba-lead` (`src/config.ts`, derived from `VITE_SUPABASE_URL`). This slug is a
+legacy production identifier retained to avoid a needless endpoint cutover. The
 function is public and takes **no key**: the bundle embeds only the project
 URL, never a Supabase key. The function inserts into `genba_ai.leads` with
 the server-side secret key -- the browser never touches the database.
@@ -80,8 +81,11 @@ machine-identity pattern used by zapEngine:
 - `INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET` (GitHub Secret)
 
 That identity must be able to read `SUPABASE_ACCESS_TOKEN` from KOKODE's
-Infisical project. As a simpler fallback, GitHub Secret
-`SUPABASE_ACCESS_TOKEN` is supported directly.
+Infisical project. This is a one-time CI bootstrap: storing the Supabase token
+inside Infisical does **not** by itself authenticate GitHub Actions to Infisical.
+If those two GitHub Secrets already exist for this repository, no additional
+setup is needed. As a simpler fallback, GitHub Secret `SUPABASE_ACCESS_TOKEN`
+is supported directly.
 
 Without `VITE_SUPABASE_URL` the live site keeps leads in each visitor's
 browser queue; they are sent automatically once a configured build ships.
@@ -89,8 +93,9 @@ browser queue; they are sent automatically once a configured build ships.
 ## Supabase backend (shared project, isolated namespace)
 
 KOKODE shares the Zap Pilot Supabase project (owned by zapEngine) but lives
-in its own `genba_ai` schema, which KOKODE manages itself -- outside
-zapEngine's migration pipeline.
+in the existing `genba_ai` schema. `genba_ai` and `genba-lead` are intentionally
+retained as legacy production identifiers; product/docs/tooling use KOKODE.
+KOKODE manages that namespace outside zapEngine's migration pipeline.
 
 - `supabase/migrations/20260922000000_create_genba_ai_leads.sql` -- schema +
   table + RLS + service_role-only grants
@@ -105,10 +110,10 @@ zapEngine's migration pipeline.
 
 | Purpose | Project | Keys KOKODE reads |
 |---|---|---|
-| KOKODE's own credentials (repo default, `.infisical.json`) | genba-ai | `SUPABASE_ACCESS_TOKEN` (personal access token) |
+| KOKODE's own credentials (repo default, `.infisical.json`) | kokode-ai | `SUPABASE_ACCESS_TOKEN` (personal access token) |
 | Shared Supabase coordinates -- **read only** | Zap Pilot | `SUPABASE_URL` |
 
-`scripts/infisical.sh <genba|zap> -- <cmd>` switches between them
+`scripts/infisical.sh <kokode|zap> -- <cmd>` switches between them
 (`INFISICAL_ENV` overrides `prod`). Never write to the Zap Pilot project:
 zapEngine's env loader fails on keys it does not declare.
 
@@ -122,7 +127,7 @@ Secrets are never printed or passed through argv.
 | `sql <file>` | Run one idempotent SQL file via the Management API (no migration history) |
 | `apply` | Run every `supabase/migrations/*.sql` file in order |
 | `check [--strict]` | Read-only report; `--strict` also fails unless the complete KOKODE backend is ready |
-| `secrets` | Set `GENBA_LEAD_ALLOWED_ORIGINS` (Pages origin + `localhost:5173`) |
+| `secrets` | Set `KOKODE_LEAD_ALLOWED_ORIGINS` (Pages origin + `localhost:5173`) |
 | `deploy` | Deploy **only** `genba-lead` (`--no-verify-jwt --use-api`, no Docker) |
 | `dev` | Vite dev server against the live function (= `pnpm dev:live`); submitted leads go to the **production** table |
 | `e2e` | API-level E2E: preflight, keyless POST, invalid email, foreign origin, DB row count |
@@ -141,7 +146,7 @@ Secrets are never printed or passed through argv.
   Dashboard's Exposed schemas) and shared with zapEngine: **append only**.
   If zapEngine ever rewrites it without `genba_ai`, the function returns 500
   and leads wait in the browser queue.
-- Function secrets are project-wide, hence the `GENBA_` prefix.
+- Function secrets are project-wide, hence the `KOKODE_` prefix.
 
 ### Production CI/CD
 
@@ -153,7 +158,7 @@ Secrets are never printed or passed through argv.
    Management API (never through Supabase migration history)
 3. runs `pnpm ops check --strict` to verify both zapEngine invariants and the
    complete KOKODE backend state
-4. reconciles `GENBA_LEAD_ALLOWED_ORIGINS`
+4. reconciles `KOKODE_LEAD_ALLOWED_ORIGINS`
 5. deploys only `genba-lead`
 6. runs the production API/DB E2E and cleans its test row
 7. deploys GitHub Pages only if every backend step passed
