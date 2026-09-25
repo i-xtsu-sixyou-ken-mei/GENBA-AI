@@ -9,9 +9,9 @@
 //
 // Server side (never in the repo / browser): the Edge runtime injects
 // SUPABASE_URL + SUPABASE_SECRET_KEYS; createAdminClient() uses the
-// `default` secret key (else the first one) to insert into genba_ai.leads
-// via PostgREST. `genba_ai` must be in authenticator's pgrst.db_schemas
-// (migration *_expose_genba_ai_schema.sql); grants restrict the table to
+// `default` secret key (else the first one) to insert into kokode_ai.leads
+// via PostgREST. `kokode_ai` must be in authenticator's pgrst.db_schemas
+// (migration *_expose_kokode_ai_schema.sql); grants restrict the table to
 // service_role.
 //
 // Not `withSupabase`: it eagerly builds a publishable-key client on every
@@ -34,6 +34,6 @@ Deno.serve((req) =>
   handleLead(req, {
     allowedOrigins,
     insertLead: (row) =>
-      createAdminClient().schema("genba_ai").from("leads").insert(row),
+      createAdminClient().schema("kokode_ai").from("leads").insert(row),
   })
 );
