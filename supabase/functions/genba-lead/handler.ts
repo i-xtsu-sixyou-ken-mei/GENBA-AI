@@ -32,7 +32,7 @@ const MAX_LEN = 500;
 const MAX_EMAIL_LEN = 254;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const HONEYPOT_FIELDS = ["website", "company_website", "nickname", "_gotcha"];
-const DEFAULT_SOURCE = "genba-ai-website";
+const DEFAULT_SOURCE = "kokode-website";
 
 export function parseAllowedOrigins(raw: string | null | undefined): string[] {
   const origins = (raw ?? "")
@@ -141,11 +141,11 @@ export async function handleLead(
   try {
     result = await deps.insertLead(row);
   } catch (error) {
-    console.error("genba-lead: client unavailable", error);
+    console.error("kokode lead endpoint: client unavailable", error);
     return json(500, { error: "not_configured" }, cors);
   }
   if (result.error) {
-    console.error("genba-lead: insert failed", result.error.message);
+    console.error("kokode lead endpoint: insert failed", result.error.message);
     return json(500, { error: "save_failed" }, cors);
   }
 
