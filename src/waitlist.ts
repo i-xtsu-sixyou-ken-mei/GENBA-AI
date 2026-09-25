@@ -1,7 +1,7 @@
 import { getAttribution, trackEvent } from "./analytics";
 import { LEAD_ENDPOINT, LEAD_SOURCE } from "./config";
 
-// Payload mirrors the `genba_ai.leads` columns (snake_case). The Edge
+// Payload mirrors the `kokode_ai.leads` columns (snake_case). The Edge
 // Function whitelists these keys; `page_url` is submit-time context kept
 // for forward compatibility (currently not stored).
 interface LeadPayload {
@@ -205,9 +205,27 @@ export function initWaitlist(): void {
   const interest = document.querySelector<HTMLSelectElement>("#interest");
   const emailInput = document.querySelector<HTMLInputElement>("#email");
   if (!form || !message || !interest || !emailInput) return;
+  const submitButton =
+    form.querySelector<HTMLButtonElement>('button[type="submit"]');
   const orgInput =
     document.querySelector<HTMLInputElement>("#organization");
   const nameInput = document.querySelector<HTMLInputElement>("#contact-name");
+  const idleSubmitLabel = submitButton?.textContent ?? "案内を受け取る";
+  let submitting = false;
+
+  const setSubmitting = (active: boolean): void => {
+    submitting = active;
+    if (!submitButton) return;
+    submitButton.disabled = active;
+    submitButton.classList.toggle("is-loading", active);
+    if (active) {
+      submitButton.setAttribute("aria-busy", "true");
+      submitButton.textContent = "送信中…";
+    } else {
+      submitButton.removeAttribute("aria-busy");
+      submitButton.textContent = idleSubmitLabel;
+    }
+  };
 
   // Best-effort: migrate the old queue, then re-send previous visits.
   migrateLegacyQueue();
@@ -218,6 +236,7 @@ export function initWaitlist(): void {
 
   form.addEventListener("submit", (event) => {
     event.preventDefault();
+    if (submitting) return;
 
     const email = emailInput.value.trim();
     if (!email) return;
@@ -246,6 +265,7 @@ export function initWaitlist(): void {
       return;
     }
 
+    setSubmitting(true);
     void (async () => {
       try {
         await postLead(payload);
@@ -263,6 +283,8 @@ export function initWaitlist(): void {
         message.textContent =
           "送信できませんでした。入力内容は保存されており、接続の回復後に自動で再送します。";
         trackEvent("lead_failed", { interest: payload.interest });
+      } finally {
+        setSubmitting(false);
       }
     })();
   });
