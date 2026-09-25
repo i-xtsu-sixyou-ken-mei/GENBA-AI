@@ -46,7 +46,14 @@
       transition:.2s ease;
     }
     .nav-cta{min-height:36px;padding:0 16px;font-size:13px}
-    .nav-cta:hover,.btn:hover{background:var(--blue-hover);transform:translateY(-1px)}
+    .nav-cta:hover,.btn:not(:disabled):hover{background:var(--blue-hover);transform:translateY(-1px)}
+    .btn:disabled{cursor:wait;opacity:.78;transform:none}
+    .email-form button.is-loading::before{
+      content:"";width:15px;height:15px;flex:0 0 15px;margin-right:8px;border-radius:50%;
+      border:2px solid rgba(255,255,255,.45);border-top-color:#fff;
+      animation:submit-spin .7s linear infinite
+    }
+    @keyframes submit-spin{to{transform:rotate(360deg)}}
     .btn.secondary{background:#fff;color:#1d1d1f;border:1px solid var(--line)}
     .eyebrow{font-size:14px;font-weight:700;letter-spacing:.04em;color:var(--blue)}
     .hero{

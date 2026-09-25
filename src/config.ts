@@ -2,7 +2,7 @@
 // Fill in the values below (or via `.env`, see `.env.example`) and rebuild.
 //
 // Leads go to the Supabase Edge Function `genba-lead`, which inserts into
-// `genba_ai.leads` with the server-side secret key. The function is public
+// `kokode_ai.leads` with the server-side secret key. The function is public
 // and needs no key, so the bundle embeds no Supabase key at all -- only the
 // project URL. Never add a `VITE_*` key of any kind.
 

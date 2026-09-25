@@ -1,17 +1,17 @@
 -- KOKODE lead capture: isolated namespace sharing the Zap Pilot project.
 --
 -- Idempotent; apply with:
---   npm run ops -- sql supabase/migrations/20260922000000_create_genba_ai_leads.sql
+--   npm run ops -- sql supabase/migrations/20260922000000_create_kokode_ai_leads.sql
 -- (Management API -- never `supabase db push`: the shared project's
 -- migration history belongs to zapEngine.) PostgREST exposure is a separate
--- step: *_expose_genba_ai_schema.sql.
+-- step: *_expose_kokode_ai_schema.sql.
 --
 -- Grants below give access to `service_role` only -- never grant
 -- `anon` / `authenticated`, so browsers cannot read/write leads directly.
 
-create schema if not exists genba_ai;
+create schema if not exists kokode_ai;
 
-create table if not exists genba_ai.leads (
+create table if not exists kokode_ai.leads (
   id uuid primary key default gen_random_uuid(),
 
   email text not null,
@@ -41,26 +41,26 @@ create table if not exists genba_ai.leads (
 );
 
 -- Helpful ordering/filtering for using this table as a lightweight CRM.
-create index if not exists leads_created_at_idx on genba_ai.leads (created_at desc);
-create index if not exists leads_status_idx on genba_ai.leads (status);
+create index if not exists leads_created_at_idx on kokode_ai.leads (created_at desc);
+create index if not exists leads_status_idx on kokode_ai.leads (status);
 
 -- Defense in depth: RLS on with no policies denies anon/authenticated
 -- even if the schema is ever exposed; service_role bypasses RLS.
-alter table genba_ai.leads enable row level security;
+alter table kokode_ai.leads enable row level security;
 
 -- Backend-only access. Do NOT grant anon / authenticated.
-grant usage on schema genba_ai to service_role;
+grant usage on schema kokode_ai to service_role;
 
 grant all
-on all tables in schema genba_ai
+on all tables in schema kokode_ai
 to service_role;
 
 grant all
-on all sequences in schema genba_ai
+on all sequences in schema kokode_ai
 to service_role;
 
-alter default privileges in schema genba_ai
+alter default privileges in schema kokode_ai
 grant all on tables to service_role;
 
-alter default privileges in schema genba_ai
+alter default privileges in schema kokode_ai
 grant all on sequences to service_role;

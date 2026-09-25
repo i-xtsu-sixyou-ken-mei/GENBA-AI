@@ -150,6 +150,34 @@ describe("form submission", () => {
     expect(readStoredQueue()).toEqual([]);
   });
 
+  it("locks the submit button and ignores repeated submits while in flight", async () => {
+    const response = deferred<Response>();
+    fetchMock.mockReturnValue(response.promise);
+    const { initWaitlist } = await load();
+    initWaitlist();
+
+    submit("user@example.com");
+    const button =
+      document.querySelector<HTMLButtonElement>('#waitlist-form button[type="submit"]');
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+
+    expect(button?.disabled).toBe(true);
+    expect(button?.classList.contains("is-loading")).toBe(true);
+    expect(button?.getAttribute("aria-busy")).toBe("true");
+    expect(button?.textContent).toBe("送信中…");
+
+    submit("user@example.com");
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    response.resolve(jsonResponse(201, { ok: true }));
+    await vi.waitFor(() => expect(message()).toBe(MSG_SUCCESS));
+
+    expect(button?.disabled).toBe(false);
+    expect(button?.classList.contains("is-loading")).toBe(false);
+    expect(button?.hasAttribute("aria-busy")).toBe(false);
+    expect(button?.textContent).toBe("送信");
+  });
+
   it.each([
     ["invalid_email", MSG_INVALID_EMAIL],
     ["invalid_interest", MSG_INVALID_INTEREST],

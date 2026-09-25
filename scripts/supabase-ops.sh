@@ -22,7 +22,7 @@
 #   - supabase functions deploy --prune, or deploy without a function name:
 #     deletes or redeploys zapEngine's functions.
 #   - overwriting authenticator's pgrst.db_schemas: append only (see
-#     supabase/migrations/*_expose_genba_ai_schema.sql).
+#     supabase/migrations/*_expose_kokode_ai_schema.sql).
 #   - writing to the Zap Pilot Infisical project (see scripts/infisical.sh).
 #
 # Secrets live in unexported shell variables and are never printed. Children
@@ -139,8 +139,9 @@ task_apply() {
 }
 
 read -r -d '' CHECK_SQL <<'SQL' || true
-with leads as (select to_regclass('genba_ai.leads') as oid),
-ns as (select oid from pg_namespace where nspname = 'genba_ai'),
+with leads as (select to_regclass('kokode_ai.leads') as oid),
+ns as (select oid from pg_namespace where nspname = 'kokode_ai'),
+legacy as (select to_regnamespace('genba_ai') as oid),
 pgrst as (
   select regexp_replace(setting, '^pgrst\.db_schemas=', '') as schemas
   from pg_db_role_setting settings
@@ -165,10 +166,11 @@ select
   coalesce(has_schema_privilege('service_role', (select oid from ns), 'USAGE')
     and has_table_privilege('service_role', (select oid from leads), 'INSERT'), false)
     as service_role_can_insert,
+  (select oid from legacy) is not null as legacy_schema_exists,
   (select schemas from pgrst) as pgrst_db_schemas,
   (select count(*) from supabase_migrations.schema_migrations) as schema_migrations_count,
   (select count(*) from supabase_migrations.schema_migrations
-   where version in ('20260922000000', '20260923021804')) as kokode_versions_in_history
+   where version in ('20260922000000', '20260923021804', '20260925011500', '20260925021000')) as kokode_versions_in_history
 SQL
 
 task_check() {
@@ -185,12 +187,14 @@ task_check() {
           ($zap - $exposed | length) == 0],
         ["invariant", "no KOKODE version in the migration history",
           (.kokode_versions_in_history | tonumber) == 0],
-        ["kokode", "genba_ai.leads exists", .leads_table_exists],
-        ["kokode", "RLS enabled on genba_ai.leads", .leads_rls_enabled],
+        ["kokode", "kokode_ai.leads exists", .leads_table_exists],
+        ["kokode", "RLS enabled on kokode_ai.leads", .leads_rls_enabled],
         ["kokode", "anon has no access", (.anon_has_access | not)],
         ["kokode", "authenticated has no access", (.authenticated_has_access | not)],
         ["kokode", "service_role can insert", .service_role_can_insert],
-        ["kokode", "genba_ai in pgrst.db_schemas", ($exposed | index("genba_ai")) != null]
+        ["kokode", "kokode_ai in pgrst.db_schemas", ($exposed | index("kokode_ai")) != null],
+        ["kokode", "legacy genba_ai schema removed", (.legacy_schema_exists | not)],
+        ["kokode", "legacy genba_ai not exposed", ($exposed | index("genba_ai")) == null]
       ][]
     | "\(if .[2] then "OK" else "NG" end)  [\(.[0])] \(.[1])"
   ' <<<"$report"
@@ -207,7 +211,9 @@ task_check() {
         and (.anon_has_access | not)
         and (.authenticated_has_access | not)
         and .service_role_can_insert
-        and (($exposed | index("genba_ai")) != null)
+        and (($exposed | index("kokode_ai")) != null)
+        and (.legacy_schema_exists | not)
+        and (($exposed | index("genba_ai")) == null)
     ' <<<"$report" >/dev/null ||
       die "KOKODE backend is not fully provisioned"
   fi
@@ -286,7 +292,7 @@ lead_json() {
 }
 
 count_leads() {
-  mgmt_query "select count(*) as n from genba_ai.leads where email = \$1" true \
+  mgmt_query "select count(*) as n from kokode_ai.leads where email = \$1" true \
     "$(jq -nc --arg e "$1" '[$e]')" | jq -r '.[0].n'
 }
 
@@ -327,7 +333,7 @@ task_e2e_cleanup() {
   load_project
   load_token
   params=$(jq -nc --arg p "$E2E_EMAIL_LIKE" '[$p]')
-  rows=$(mgmt_query "select email, created_at from genba_ai.leads
+  rows=$(mgmt_query "select email, created_at from kokode_ai.leads
     where email like \$1 order by created_at" true "$params")
   jq -r '.[] | "\(.created_at)  \(.email)"' <<<"$rows"
   count=$(jq 'length' <<<"$rows")
@@ -338,7 +344,7 @@ task_e2e_cleanup() {
     read -r -p "Delete these $count row(s)? [y/N] " answer
     [[ $answer == [yY] ]] || die "aborted"
   fi
-  mgmt_query "with deleted as (delete from genba_ai.leads
+  mgmt_query "with deleted as (delete from kokode_ai.leads
     where email like \$1 returning 1) select count(*) as n from deleted" \
     false "$params" | jq -r '"deleted \(.[0].n) row(s)"'
 }

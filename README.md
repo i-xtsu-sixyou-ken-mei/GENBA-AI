@@ -53,11 +53,12 @@ The site includes `privacy.html` and links to it from the lead form and footer.
 `genba-lead` (`src/config.ts`, derived from `VITE_SUPABASE_URL`). This slug is a
 legacy production identifier retained to avoid a needless endpoint cutover. The
 function is public and takes **no key**: the bundle embeds only the project
-URL, never a Supabase key. The function inserts into `genba_ai.leads` with
+URL, never a Supabase key. The function inserts into `kokode_ai.leads` with
 the server-side secret key -- the browser never touches the database.
 
 Reliability: submissions that fail are queued in local storage
-(`genba-ai-lead-queue-v2`) and re-sent on page load, on the browser `online`
+(`genba-ai-lead-queue-v2`, intentionally retained as a legacy key so existing
+queued leads survive the rename) and re-sent on page load, on the browser `online`
 event and after the next successful submit (one flush at a time). A lead
 leaves the queue only when the function stored it (2xx) or rejected it as
 invalid (`400 invalid_email` / `400 invalid_interest`). Every other failure
@@ -93,14 +94,17 @@ browser queue; they are sent automatically once a configured build ships.
 ## Supabase backend (shared project, isolated namespace)
 
 KOKODE shares the Zap Pilot Supabase project (owned by zapEngine) but lives
-in the existing `genba_ai` schema. `genba_ai` and `genba-lead` are intentionally
-retained as legacy production identifiers; product/docs/tooling use KOKODE.
-KOKODE manages that namespace outside zapEngine's migration pipeline.
+in the `kokode_ai` schema. The Edge Function slug `genba-lead` is the only
+legacy production identifier still retained to avoid a needless public endpoint
+cutover. KOKODE manages its database namespace outside zapEngine's migration
+pipeline.
 
-- `supabase/migrations/20260922000000_create_genba_ai_leads.sql` -- schema +
+- `supabase/migrations/20260922000000_create_kokode_ai_leads.sql` -- schema +
   table + RLS + service_role-only grants
-- `supabase/migrations/*_expose_genba_ai_schema.sql` -- appends `genba_ai`
-  to PostgREST's exposed schemas
+- `supabase/migrations/20260923021804_expose_kokode_ai_schema.sql` -- appends
+  `kokode_ai` to PostgREST's exposed schemas
+- `supabase/migrations/20260925021000_drop_legacy_genba_ai_schema.sql` --
+  destructive cleanup: drops the old GENBA schema and removes it from PostgREST
 - `supabase/functions/genba-lead/handler.ts` -- pure request handler
   (CORS/origin allowlist, validation, honeypot), unit-tested on Node
 - `supabase/functions/genba-lead/index.ts` -- Deno entry point
@@ -140,11 +144,11 @@ Secrets are never printed or passed through argv.
   `config push` against it. zapEngine's CI `db push`es its own history from
   `supabase_migrations.schema_migrations`; a KOKODE version there breaks its
   deploys. KOKODE SQL goes through `ops sql` and only creates/alters
-  `genba_ai.*`.
+  `kokode_ai.*`.
 - **Never** `functions deploy --prune` or deploy without a function name.
 - `authenticator`'s `pgrst.db_schemas` is pinned in the DB (it overrides the
   Dashboard's Exposed schemas) and shared with zapEngine: **append only**.
-  If zapEngine ever rewrites it without `genba_ai`, the function returns 500
+  If zapEngine ever rewrites it without `kokode_ai`, the function returns 500
   and leads wait in the browser queue.
 - Function secrets are project-wide, hence the `KOKODE_` prefix.
 
@@ -168,5 +172,5 @@ re-run. Local `pnpm ops ...` commands remain available as break-glass
 operations, not as normal release steps.
 
 Rollback: remove `VITE_SUPABASE_URL` and rerun Pages to return the frontend
-to queue-only mode; deleting the Edge Function or un-exposing `genba_ai`
+to queue-only mode; deleting the Edge Function or un-exposing `kokode_ai`
 should be reserved for an explicit backend rollback. Schema and data are kept.

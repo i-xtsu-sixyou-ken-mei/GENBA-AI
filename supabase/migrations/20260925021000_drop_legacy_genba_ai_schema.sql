@@ -1,19 +1,10 @@
--- Expose legacy schema `genba_ai` to PostgREST so KOKODE's `genba-lead` Edge Function can insert
--- via the Data API. Idempotent; apply with:
---   npm run ops -- sql supabase/migrations/20260923021804_expose_genba_ai_schema.sql
--- (Management API -- never `supabase db push`: the shared project's
--- migration history belongs to zapEngine.)
---
--- The shared project pins `pgrst.db_schemas` on the `authenticator` role,
--- which overrides Dashboard > Data API > Exposed schemas. zapEngine relies
--- on that list (PGRST106 if its schemas disappear), so APPEND only, never
--- overwrite. Same DO block as zapEngine
--- apps/podcast-pipeline/supabase/migrations/006_harden_mobile_anon_access.sql.
---
--- Rollback: rerun this block with the split list filtered to drop
--- `genba_ai` instead of appending it.
+-- Remove the legacy GENBA namespace after KOKODE has provisioned its replacement.
+-- Destructive by design: existing genba_ai data is not migrated.
+-- Idempotent and applied through the Management API, never migration history.
 
 begin;
+
+drop schema if exists genba_ai cascade;
 
 do $$
 declare
@@ -38,10 +29,11 @@ begin
   from (
     select btrim(schema_name) as schema_name, min(ordinal_position) as first_seen
     from regexp_split_to_table(
-      current_schemas || ',genba_ai',
+      current_schemas || ',kokode_ai',
       ','
     ) with ordinality as listed(schema_name, ordinal_position)
     where btrim(schema_name) <> ''
+      and btrim(schema_name) <> 'genba_ai'
     group by btrim(schema_name)
   ) schemas;
 
