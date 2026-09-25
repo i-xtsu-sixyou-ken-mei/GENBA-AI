@@ -27,7 +27,9 @@ The repository uses a GitHub Actions Pages workflow at:
 
 `.github/workflows/pages.yml`
 
-Pull requests run the Vite build as a validation check. Pushes to `main` build and deploy `dist/` to GitHub Pages.
+Pull requests run the Vite build as a validation check. Pushes to `main` run the full production pipeline: tests/build → KOKODE
+Supabase reconciliation → production E2E → GitHub Pages deploy. The frontend
+is not published if the backend rollout or E2E fails.
 
 Current Pages base path:
 
@@ -64,16 +66,25 @@ UTM params + first-touch referrer/landing URL are captured per session
 (`src/analytics.ts`) and sent with each lead. Collected fields are listed
 in `privacy.html` §1.
 
-Production (GitHub Pages) needs one Repository Variable, set with
-`pnpm ops gh-vars` (or Settings → Secrets and variables → Actions →
-Variables):
+Production needs the public Repository Variable:
 
 - `VITE_SUPABASE_URL` -- the shared project URL (public by design)
-- `VITE_SALES_EMAIL`, `VITE_SUPPORT_EMAIL`, `VITE_ANALYTICS_ENDPOINT` --
-  optional
+
+Optional frontend variables are `VITE_SALES_EMAIL`, `VITE_SUPPORT_EMAIL`
+and `VITE_ANALYTICS_ENDPOINT`.
+
+The backend deploy job also needs a credential. Prefer the same Infisical
+machine-identity pattern used by zapEngine:
+
+- `INFISICAL_UNIVERSAL_AUTH_CLIENT_ID` (GitHub Secret)
+- `INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET` (GitHub Secret)
+
+That identity must be able to read `SUPABASE_ACCESS_TOKEN` from KOKODE's
+Infisical project. As a simpler fallback, GitHub Secret
+`SUPABASE_ACCESS_TOKEN` is supported directly.
 
 Without `VITE_SUPABASE_URL` the live site keeps leads in each visitor's
-browser queue; they are sent automatically once a build with the URL ships.
+browser queue; they are sent automatically once a configured build ships.
 
 ## Supabase backend (shared project, isolated namespace)
 
@@ -108,8 +119,9 @@ Secrets are never printed or passed through argv.
 
 | Task | What it does |
 |---|---|
-| `sql <file>` | Run an idempotent SQL file via the Management API (no migration history) |
-| `check` | Read-only report: table, RLS, grants, exposed schemas, migration count; exits 1 if a zapEngine invariant broke |
+| `sql <file>` | Run one idempotent SQL file via the Management API (no migration history) |
+| `apply` | Run every `supabase/migrations/*.sql` file in order |
+| `check [--strict]` | Read-only report; `--strict` also fails unless the complete KOKODE backend is ready |
 | `secrets` | Set `GENBA_LEAD_ALLOWED_ORIGINS` (Pages origin + `localhost:5173`) |
 | `deploy` | Deploy **only** `genba-lead` (`--no-verify-jwt --use-api`, no Docker) |
 | `dev` | Vite dev server against the live function (= `pnpm dev:live`); submitted leads go to the **production** table |
@@ -131,21 +143,25 @@ Secrets are never printed or passed through argv.
   and leads wait in the browser queue.
 - Function secrets are project-wide, hence the `GENBA_` prefix.
 
-### Rollout order
+### Production CI/CD
 
-The endpoint must work before the site points at it -- visitors' queued leads
-are re-sent as soon as a build with `VITE_SUPABASE_URL` ships.
+`.github/workflows/pages.yml` owns the production rollout. After a merge to
+`main` it:
 
-1. `pnpm ops check` (baseline: note the migration count)
-2. `pnpm ops sql supabase/migrations/20260922000000_create_genba_ai_leads.sql`
-3. `pnpm ops sql supabase/migrations/<ts>_expose_genba_ai_schema.sql`
-4. `pnpm ops check` -- all OK, migration count unchanged
-5. `pnpm ops secrets` then `pnpm ops deploy`
-6. `pnpm ops e2e`
-7. `pnpm ops gh-vars`, then merge to `main` (Pages deploy)
-8. Verify on the live site, then `pnpm ops e2e-cleanup`
+1. runs tests and builds the Vite site
+2. runs every idempotent `supabase/migrations/*.sql` file through the
+   Management API (never through Supabase migration history)
+3. runs `pnpm ops check --strict` to verify both zapEngine invariants and the
+   complete KOKODE backend state
+4. reconciles `GENBA_LEAD_ALLOWED_ORIGINS`
+5. deploys only `genba-lead`
+6. runs the production API/DB E2E and cleans its test row
+7. deploys GitHub Pages only if every backend step passed
 
-Rollback: `gh variable delete VITE_SUPABASE_URL` + rerun Pages (back to
-queue-only; no lead is lost); `npx supabase@2.117.0 functions delete
-genba-lead --project-ref <ref>`; to un-expose, rerun the expose block with
-`genba_ai` filtered out. Schema and data are kept.
+The SQL files in this repository therefore must stay idempotent and safe to
+re-run. Local `pnpm ops ...` commands remain available as break-glass
+operations, not as normal release steps.
+
+Rollback: remove `VITE_SUPABASE_URL` and rerun Pages to return the frontend
+to queue-only mode; deleting the Edge Function or un-exposing `genba_ai`
+should be reserved for an explicit backend rollback. Schema and data are kept.
